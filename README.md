@@ -1,6 +1,11 @@
 # LoRa_APRS_Meteo
 LoRa APRS Meteostation, IGate and Digipeater firmware for LilyGO TTGO<br><br>
-Features: measures temperature, pressure (with BMP280) and humidity (with AHT20) integrated module, sends meteodata via LoRa APRS, via APRS-IS and/or via own GET requests. Works as a standard LoRa APRS IGate and/or digipeater, reports coverage.<br><br>
+Features: measures temperature, pressure (with BMP280) and humidity (with AHT20) integrated module
+<br>
+<img src="https://github.com/iw1cgw/LoRa_APRS_Meteo_dds-cgw/blob/main/img/bmp280+aht20.jpg">
+<br>
+
+, sends meteodata via LoRa APRS, via APRS-IS and/or via own GET requests. Works as a standard LoRa APRS IGate and/or digipeater, reports coverage.<br><br>
 Source code is in src/main.cpp, before running your station please check:<br>
 - you have a valid HAM radio license
 - you have edited <b>config.h</b> and wrote your own configuration
@@ -34,9 +39,9 @@ If you have iPhone, you can download and setup LoRa_APRS_Meteo.shortcut file and
 If the meteostation is connected to Wi-Fi, it runs a tiny webserver. Some of the endpoints are even suitable for browser use.<br>Access your station dashboard with entering your station IP to your browser. For accessing from outside your home network, make sure you open ports 80 and 5028 (websocket).<br>Documentation of GET requests (API endpoints) is also in APIdocs.txt<br><br>
 <b>API endpoints with HTML webpage output (with previews)</b><br>
 / - meteo dashboard with WebSocket (the values update automatically) - WebSocket uses port 5028<br><br>
-<img src="https://github.com/ddaqua6/LoRa_APRS_Meteo/blob/main/img/meteo.png"><br>
+<img src="https://github.com/iw1cgw/LoRa_APRS_Meteo_dds-cgw/blob/main/img/meteo.jpg"><br>
 /lora - station dashboard<br><br>
-<img src="https://github.com/ddaqua6/LoRa_APRS_Meteo/blob/main/img/dashboard.png"><br>
+<img src="https://github.com/iw1cgw/LoRa_APRS_Meteo_dds-cgw/blob/main/img/dashboard.jpg"><br>
 /graphs - charts of weather history<br><br>
 <img src="https://github.com/ddaqua6/LoRa_APRS_Meteo/blob/main/img/charts.png"><br>
 /watch - meteo dashboard without WebSocket suitable for small displays, e.g. smartwatch<br><br>
