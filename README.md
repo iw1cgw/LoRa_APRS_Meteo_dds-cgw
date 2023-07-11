@@ -1,17 +1,17 @@
 # LoRa_APRS_Meteo
 LoRa APRS Meteostation, IGate and Digipeater firmware for LilyGO TTGO<br><br>
-Features: measures temperature, pressure (with BMP280) and wind (with hall sensor anemometer - KY-024), sends meteodata via LoRa APRS, via APRS-IS and/or via own GET requests. Works as a standard LoRa APRS IGate and/or digipeater, reports coverage.<br><br>
+Features: measures temperature, pressure (with BMP280) and humidity (with AHT20) integrated module, sends meteodata via LoRa APRS, via APRS-IS and/or via own GET requests. Works as a standard LoRa APRS IGate and/or digipeater, reports coverage.<br><br>
 Source code is in src/main.cpp, before running your station please check:<br>
 - you have a valid HAM radio license
 - you have edited <b>config.h</b> and wrote your own configuration
 <br><br>
-If you need help or have any questions or suggestions, please reach me: david(at)ok2dds.cz
+If you need help or have any questions or suggestions, please reach: david(at)ok2dds.cz or iw1cgw(at)libero.it
 <h2>Setup guide</h2>
 1. Download this repository and open it in PlatformIO. It should obtain all dependencies automatically, otherwise they are listed in platformio.ini.<br>
 2. Edit include/config.h.<br>
 3. Upload to your TTGO desk<br><br>
-For running the temperature/pressure measurement, you will need to use BMP280 sensor. Please solder VCC to 3.3V pin, GND to GND, SCL to IO22 and SDA to IO21.<br>
-For wind measurement, you will have to obtain an anemometer with magnets in it (suggest 3D printed) and KY-024 hall sensor in the anemometer base. Please solder + to 3.3V pin, G to GND and AO to IO35 (you can use also other pins, if you modify the config file). BMP280 often needs a calibration, please write correct offsets to config file. If you don't want to measure wind, turn USE_ANEMOMETER to false. Temperature/pressure sensor is detected automatically, so simply don't connect BMP280 if you don't want to measure temp./pressure.<br>
+For running the temperature/pressure measurement, you will need to use BMP280+AHT20 sensor. Please solder VCC to 3.3V pin, GND to GND, SCL to IO22 and SDA to IO21.<br>
+BMP280 often needs a calibration, please write your altitude to config file. If you don't want to measure wind, turn USE_ANEMOMETER to false. Temperature/pressure/humidity sensor is detected automatically, so simply don't connect BMP280+AHT20 module if you don't want to measure temp./pressure/humidity.<br>
 <h2>Config file documentation</h2>
 Use_WiFi true/false - whether to connect to Wi-Fi (enables functions that need internet)<br>
 ssid, password, Hostname - insert your Wi-Fi details and desired hostname (name, under which you will see the station in the LAN)<br><br>
@@ -71,7 +71,7 @@ Example:
     1023,
     1023
   ],
-  "wind": [
+  "Hum": [
     1.75,
     1.5,
     ...
@@ -109,15 +109,13 @@ Example:
 	"meteo": {
 		"temperature": 10.0,
 		"pressure": 1013,
-		"actual_wind": 2.25,
-		"long_period_wind": 0.5,
-		"gust": 3.5,
+		"humidity": 72.25,
 		"min_temperature": -10,
 		"max_temperature": 30,
 		"min_pressure": 990,
 		"max_pressure": 1020,
-		"max_wind": 4,
-		"max_gust": 6.5
+		"min_Hum": 54,12
+		"max_Hum": 66.55
 	}
 }
 </code>
