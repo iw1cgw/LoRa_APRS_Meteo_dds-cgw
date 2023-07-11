@@ -4,12 +4,14 @@
 #include <Wire.h>
 #include <WiFi.h>
 #include <HTTPClient.h>
+#include <Adafruit_Sensor.h>
 #include <Adafruit_BMP280.h>
+#include <Adafruit_AHTX0.h>
 #include <AsyncTCP.h>
 #include <ESPAsyncWebServer.h>
 #include "website.h"
 
-String VERSION = "4.1";
+String VERSION = "4.1(cgw)";
 String DESTCALL = "APLGM4";
 
 void lora_setup();
@@ -48,6 +50,8 @@ String lastRXstation = "no station";
 
 float voltage = 0;
 int battPercent = 0;
+unsigned long  millis_led = 0;
+const byte PLED1 = 25;   
 
 bool wifiStatus = false;
 static time_t aprsLastReconnect = 0;
@@ -56,24 +60,37 @@ static time_t lastMtBeacon = 0;
 static time_t lastUpload = 0;
 
 Adafruit_BMP280 bmp;
+Adafruit_AHTX0 aht;
 bool BMPstatus = false;
+bool AHTstatus = false;
 bool getBMPstatus();
+bool getAHTstatus();
+
 float getBMPTempC();
 String getBMPTempAPRS();
+
+float getHum();
+String getHumAPRS();
+
 float getPressure();
 String getPressureAPRS();
+
 String tempToWeb(float tempValue);
-String pressToWeb(int pressValue);
+String pressToWeb(float pressValue);
+String HumToWeb(float HumValue);
 String windToWeb(float windValue);
 String valueForJSON(String value);
 
 String tempValues;
 String pressValues;
+String HumValues;
 String windValues;
 float minTemp = -1000;
 float maxTemp;
-int minPress = -1000;
-int maxPress;
+float minHum = 10;
+float maxHum = 99;
+float minPress = -1000;
+float maxPress;
 float maxWind;
 float maxGust;
 String addGraphValue(String values, String value);
@@ -98,6 +115,10 @@ bool meteoSwitch = USE_METEO;
 bool aprsSwitch = Use_IGATE;
 
 void setup() {
+  
+  
+  
+  
   Serial.begin(SERIAL_BAUD);
   Serial.println("\n\nLoRa Meteo v" + String(VERSION) + "\nby OK2DDS\n");
   lora_setup();
@@ -119,13 +140,33 @@ void setup() {
   }
 
   // BMP
+  BMPstatus = false;
   if (!bmp.begin(0x76)) {
-    Serial.println("BMP280 not connected");
-    BMPstatus = false;
-  } else {
-    Serial.println("BMP280 OK");
+    Serial.println("BMP280 not connected 0x76");
+    } else {
+    Serial.println("BMP280 0x76 OK");
     BMPstatus = true;
   }
+  
+  if (!bmp.begin(0x77)) {
+    Serial.println("BMP280 not connected 0x77");
+    } else {
+    Serial.println("BMP280 0x77 OK");
+    BMPstatus = true;
+  }
+
+ // AHT
+  if (!aht.begin()) {
+    Serial.println("AHT20 not connected");
+    AHTstatus = false;
+  } else {
+    Serial.println("AHT20 OK");
+    AHTstatus = true;
+  }
+
+
+
+
   // HALL - digital
   if (USE_ANEMOMETER) pinMode(HALL_SENSOR_PIN, INPUT);
   //attachInterrupt(digitalPinToInterrupt(HALL_SENSOR_PIN), hall_change, HIGH);
@@ -139,6 +180,10 @@ void setup() {
 }
 
 void loop() {
+  
+  
+
+    
   if (check_wifi() && wifiStatus == false) {
     wifiStatus = true;
     Serial.println("Wi-Fi connected");
@@ -187,11 +232,11 @@ void loop() {
             if (GETIndex(header, "/api")) {
               // API responses without user frontend layout
               if (GETIndex(header, "/api/meteo"))
-                client.println(tempToWeb(getBMPTempC()) + "," + pressToWeb(int(getPressure())) + "," + windToWeb(windActualSpeed) + "," + windToWeb(windLongPeriodSpeed) + "," + windToWeb(gust));
+                client.println(tempToWeb(getBMPTempC()) + "," + "," + HumToWeb(int(getHum())) + pressToWeb(getPressure()) );
               if (GETIndex(header, "/api/graphs-json"))
-                client.println("{\"temperature\": [" + String(tempValues) + "], \"pressure\": [" + String(pressValues) + "], \"wind\": [" + String(windValues) + "]}");
+                client.println("{\"temperature\": [" + String(tempValues) + "], \"pressure\": [" + String(pressValues) + "], \"Hum\": [" + String(HumValues) + "], \"wind\": [" + String(windValues) + "]}");
               if (GETIndex(header, "/api/json"))
-                client.println("{\"general\": {\"version\":\"" + String(VERSION) + "\", \"destcall\":\"" + String(DESTCALL) + "\", \"system_time\":" + String(millis()) + ", \"voltage\":" + String(voltage) + ", \"battery\":" + String(battPercent) + ", \"wifi_status\":" + (check_wifi() ? "true" : "false") + ", \"wifi_signal_db\":" + (check_wifi() ? String(WiFi.RSSI()) : "0") + ", \"wifi_ssid\":\"" + String(WiFi.SSID()) + "\", \"wifi_hostname\":\"" + String(Hostname) + "\", \"bmp280_status\":" + (getBMPstatus() ? "true" : "false") + "}, \"lora\": {\"meteo_callsign\":\"" + String(METEO_CALLSIGN) + "\", \"meteo_enabled\":" + (meteoSwitch ? "true" : "false") + ", \"igate_callsign\":\"" + String(IGATE_CALLSIGN) + "\", \"aprs_is_enabled\":" + (aprsSwitch ? "true" : "false") + ", \"aprs_is_status\":" + (check_aprsis() ? "true" : "false") + ", \"aprs_is_server\":\"" + (check_aprsis() ? String(APRSISServer) : "disconnected") + "\", \"hall_sensor\":" + String(anemoACValue) + ", \"last_rx\":\"" + String(lastRXstation) + "\"" + "}, \"meteo\": {\"temperature\":" + valueForJSON(tempToWeb(getBMPTempC())) + ", \"pressure\":" + valueForJSON(pressToWeb(int(getPressure()))) + ", \"actual_wind\":" + valueForJSON(windToWeb(windActualSpeed)) + ", \"long_period_wind\":" + valueForJSON(windToWeb(windLongPeriodSpeed)) + ", \"gust\":" + valueForJSON(windToWeb(gust)) + ", \"min_temperature\":" + (getBMPstatus() ? String(minTemp) : "0") + ", \"max_temperature\":" + (getBMPstatus() ? String(maxTemp) : "0") + ", \"min_pressure\":" + (getBMPstatus() ? String(minPress) : "0") + ", \"max_pressure\":" + (getBMPstatus() ? String(maxPress) : "0") + ", \"max_wind\":" + String(maxWind) + ", \"max_gust\":" + String(maxGust) + "}}");
+                client.println("{\"general\": {\"version\":\"" + String(VERSION) + "\", \"destcall\":\"" + String(DESTCALL) + "\", \"system_time\":" + String(millis()) + ", \"voltage\":" + String(voltage) + ", \"battery\":" + String(battPercent) + ", \"wifi_status\":" + (check_wifi() ? "true" : "false") + ", \"wifi_signal_db\":" + (check_wifi() ? String(WiFi.RSSI()) : "0") + ", \"wifi_ssid\":\"" + String(WiFi.SSID()) + "\", \"wifi_hostname\":\"" + String(Hostname) + "\", \"bmp280_status\":" + (getBMPstatus() ? "true" : "false") + "}, \"lora\": {\"meteo_callsign\":\"" + String(METEO_CALLSIGN) + "\", \"meteo_enabled\":" + (meteoSwitch ? "true" : "false") + ", \"igate_callsign\":\"" + String(IGATE_CALLSIGN) + "\", \"aprs_is_enabled\":" + (aprsSwitch ? "true" : "false") + ", \"aprs_is_status\":" + (check_aprsis() ? "true" : "false") + ", \"aprs_is_server\":\"" + (check_aprsis() ? String(APRSISServer) : "disconnected") + "\", \"hall_sensor\":" + String(anemoACValue) + ", \"last_rx\":\"" + String(lastRXstation) + "\"" + "}, \"meteo\": {\"temperature\":" + valueForJSON(tempToWeb(getBMPTempC())) + ", \"pressure\":" + valueForJSON(pressToWeb(getPressure()))  + ", \"Hum\":" + valueForJSON(HumToWeb(getHum())) + ", \"actual_wind\":" + valueForJSON(windToWeb(windActualSpeed)) + ", \"long_period_wind\":" + valueForJSON(windToWeb(windLongPeriodSpeed)) + ", \"gust\":" + valueForJSON(windToWeb(gust)) + ", \"min_temperature\":" + (getBMPstatus() ? String(minTemp) : "0") + ", \"max_temperature\":" + (getBMPstatus() ? String(maxTemp) : "0") + ", \"min_pressure\":" + (getBMPstatus() ? String(minPress) : "0") + ", \"max_pressure\":" + (getBMPstatus() ? String(maxPress) : "0") + ", \"max_wind\":" + String(maxWind) + ", \"max_gust\":" + String(maxGust) + "}}");
             } else {
             client.println(String(webPageStart));
             if (!GETIndex(header, "/watch")) client.println(String(webPageHeader) + "</h1><br>");
@@ -220,6 +265,15 @@ void loop() {
               maxTemp = minTemp;
               client.println("<br>Temperature reset done.<br>");
             }
+            if (GETIndex(header, "/reset-hum")) {
+              minTemp = getHum();
+              maxTemp = minHum;
+              client.println("<br>Humidity reset done.<br>");
+            }
+
+
+
+
             if (GETIndex(header, "/reset-press")) {
               minPress = getPressure();
               maxPress = minPress;
@@ -238,13 +292,20 @@ void loop() {
               client.println("<br>Wind reset done.<br>");
             }
             if (GETIndex(header, "/lora"))
-              client.println("<br>Version: " + String(VERSION) + "<br><br> Voltage: " + String(voltage) + "V<br>Battery: " + String(battPercent) + "%<br>Wi-Fi: " + (check_wifi() ? String(WiFi.SSID()) + " " + String(WiFi.RSSI()) + " dB<br>IP: " + ipToString(WiFi.localIP()) : String("not connected")) + String("<br>APRS-IS: ") + (aprsis.connected() ? "connected" : "not connected") + "<br>Last RX: " + String(lastRXstation) + "<br>Hall sensor: " + String(anemoACValue) + "<br><br>");
+              // --- original --- // client.println("<br>Version: " + String(VERSION) + "<br><br> Voltage: " + String(voltage) + "V<br>Battery: " + String(battPercent) + "%<br>Wi-Fi: " + (check_wifi() ? String(WiFi.SSID()) + " " + String(WiFi.RSSI()) + " dB<br>IP: " + ipToString(WiFi.localIP()) : String("not connected")) + String("<br>APRS-IS: ") + (aprsis.connected() ? "connected" : "not connected") + "<br>Last RX: " + String(lastRXstation) + "<br>Hall sensor: " + String(anemoACValue) + "<br><br>");
+              client.println("Version: " + String(VERSION) + "<br><br> Voltage: " + String(voltage) + " - Battery: " + String(battPercent) + "%<br>Wi-Fi: " + (check_wifi() ? String(WiFi.SSID()) + " " + String(WiFi.RSSI()) + " dB<br>IP: " + ipToString(WiFi.localIP()) : String("not connected")) + String("<br>APRS-IS: ") + (aprsis.connected() ? "connected" : "not connected") + "<br>Last RX: " + String(lastRXstation) + "<br><br>");
             if ((GETIndex(header, "/lora") || GETIndex(header, "/min-max")) && USE_METEO && (BMPstatus || USE_ANEMOMETER)) {
               client.println("<table><tr><td></td><td><b>Minimum</b></td><td><b>Maximum</b></td></tr>");
+              
               if (BMPstatus) {
                 client.println("<tr><td><b>Temperature</b></td><td>" + String(minTemp) + " &deg;C</td><td>" + String(maxTemp) + " &deg;C</td></tr>");
-                client.println("<tr><td><b>Pressure</b></td><td>" + String(minPress) + " hPa</td><td>" + String(maxPress) + " hPa</td></tr>");
+                client.println("<tr><td><b>PressureSLM</b></td><td>" + String(minPress) + " hPa</td><td>" + String(maxPress) + " hPa</td></tr>");
               }
+              
+              if (AHTstatus) {  
+                client.println("<tr><td><b>% Hum</b></td><td>" + String(minHum) + " %</td><td>" + String(maxHum) + " %</td></tr>");
+              }
+              
               if (USE_ANEMOMETER) {
                 client.println("<tr><td><b>Avg. wind</b></td><td>0.00 m/s</td><td>" + String(maxWind) + " m/s</td></tr>");
                 client.println("<tr><td><b>Wind gust</b></td><td>0.00 m/s</td><td>" + String(maxGust) + " m/s</td></tr>");
@@ -252,10 +313,11 @@ void loop() {
               client.println("</table><br>");
             }
             if (GETIndex(header, "/lora")) {
-              client.println("<br>Reset values<br><a href='/reset-bmp'>BMP values</a> - <a href='/reset-temp'>Temperature</a> - <a href='/reset-press'>Pressure</a> - <a href='/reset-wind'>Wind</a><br>");
+              // --- original --- // client.println("<br>Reset values<br><a href='/reset-bmp'>BMP values</a> - <a href='/reset-temp'>Temperature</a> - <a href='/reset-press'>Pressure</a> - <a href='/reset-wind'>Wind</a><br>");
+              client.println("<br>Reset values<br><a href='/reset-temp'>Temperature</a> - <a href='/reset-hum'>Humidity</a> - <a href='/reset-press'>Pressure</a><br>");
               client.println("<br><a href='/switch-meteo'>Turn meteo On/Off</a> (" + String(meteoSwitch ? "ON" : "OFF") + ")");
               client.println("<br><a href='/switch-aprs'>Turn IGate On/Off</a> (" + String(aprsSwitch ? "ON" : "OFF") + ")");
-              client.println("<br><a href='/change-aprsis'>Change APRS-IS server</a> (" + String(APRSISServer) + ")");
+              // --- original --- // client.println("<br><a href='/change-aprsis'>Change APRS-IS server</a> (" + String(APRSISServer) + ")");
               client.println("<br><a href='/restart'>Restart device</a>");
               client.println("<br><br><a href='/'>View main meteo page</a>");
             }
@@ -267,7 +329,12 @@ void loop() {
               if (BMPstatus) {
                 client.println(generateGraph(tempValues, "Temperature", "temp", 230, 0, 0));
                 client.println(generateGraph(pressValues, "Pressure", "press", 0, 125, 0));
+              }  
+
+              if (AHTstatus) {
+                client.println(generateGraph(HumValues, "% Hum", "Hum", 0, 100, 0));
               }
+
               if (USE_ANEMOMETER)
                 client.println(generateGraph(windValues, "Average wind (m/s)", "wind", 0, 0, 255));
               client.println("<a href='/'>View main meteo page</a>");
@@ -337,15 +404,17 @@ void loop() {
               client.println(webMeteoOnlineIndicator);
               client.println(webMeteoLayout);
               client.println(webSocketSetupScript);
-              client.println(HTMLelementDef("onlineIndicator") + HTMLelementDef("temp") + HTMLelementDef("press") + HTMLelementDef("wind") + HTMLelementDef("windkmh") + HTMLelementDef("gust") + HTMLelementDef("windlp"));
+              client.println(HTMLelementDef("onlineIndicator") + HTMLelementDef("temp") + HTMLelementDef("Hum") + HTMLelementDef("press") + HTMLelementDef("wind") + HTMLelementDef("windkmh") + HTMLelementDef("gust") + HTMLelementDef("windlp"));
+              
               client.println(webMeteoOnlineRoutine);
               client.println(webSocketHandleScript);
             }
             if (GETIndex(header, "/watch")) {
               // METEO WEBSITE LAYOUT FOR WATCH
               client.println(webMeteoWatchLayout);
-              client.println("<script>var dat = '" + tempToWeb(getBMPTempC()) + "," + pressToWeb(int(getPressure())) + "," + windToWeb(windActualSpeed) + "," + windToWeb(windKMH(windActualSpeed)) + "'; ");
-              client.println(HTMLelementDef("temp") + HTMLelementDef("press") + HTMLelementDef("wind") + HTMLelementDef("windkmh"));
+              client.println("<script>var dat = '" + tempToWeb(getBMPTempC()) + "," + HumToWeb(int(getHum())) + pressToWeb(getPressure()) + "," + windToWeb(windActualSpeed) + "," + windToWeb(windKMH(windActualSpeed)) + "'; ");
+              client.println(HTMLelementDef("temp") + HTMLelementDef("Hum") +  HTMLelementDef("press") + HTMLelementDef("wind") + HTMLelementDef("windkmh"));
+                          
               client.println(webWatchValuesScript);
             }
             if (!GETIndex(header, "/watch"))
@@ -386,7 +455,9 @@ void loop() {
     String destCall, digiPath, originalPath, sourceCall, message, digiPacket, statusMessage;
     int pos1, pos2;
     String rxPacket = LoRa.readString();
-    rxPacket = rxPacket.substring(3);
+    
+    // --- original rxPacket = rxPacket.substring(3);
+    rxPacket = rxPacket.substring(3,(rxPacket.length()-1));
     Serial.println("RX: " + rxPacket);
 
     if (!(rxPacket.length() < 5 || rxPacket.indexOf('>') < 5 || rxPacket.indexOf(':') < rxPacket.indexOf('>') || rxPacket.substring(rxPacket.indexOf('>') + 1, rxPacket.indexOf(':')) == "") && Use_IGATE && Use_WiFi && aprsSwitch) {
@@ -582,7 +653,7 @@ void aprsis_send(String aprsis_packet) {
 void beacon_igate() {
   lastIgBeacon = millis();
   if (Use_IGATE && check_wifi()) {
-    String beacon = String(IGATE_CALLSIGN) + ">" + String(DESTCALL) + ":!" + String(IGATE_LAT) + "L" + String(IGATE_LON) + "&" + String(IGATE_COMMENT);
+    String beacon = String(IGATE_CALLSIGN) + ">" + String(DESTCALL) + ":!" + String(IGATE_LAT) + "L" + String(IGATE_LON) + "&" + String(IGATE_COMMENT) + String(" | batt:") + String(voltage);
     if (IGATE_BCN_NETWORK) {
       aprsis_send(beacon);
     } else if (Use_IGATE) {
@@ -595,14 +666,15 @@ void beacon_igate() {
 void beacon_meteo() {
   lastMtBeacon = millis();
   if (meteoSwitch && BMPstatus) {
-    String meteoBeacon = String(METEO_CALLSIGN) + ">" + String(DESTCALL) + ":!" + String(METEO_LAT) + "/" + String(METEO_LON) + "_.../" + String(windSpeedAPRS(windLongPeriodSpeed)) + "g" +  String(windSpeedAPRS(gust)) + "t" + String(getBMPTempAPRS()) + "b" + String(getPressureAPRS()) + String(METEO_COMMENT) + " U=" + String(voltage) + "V";
-    lora_send(meteoBeacon);
+    String meteoBeacon = String(METEO_CALLSIGN) + ">" + String(DESTCALL) + ":!" + String(METEO_LAT) + "/" + String(METEO_LON) + "_.../" + String(windSpeedAPRS(windLongPeriodSpeed)) + "g" +  String(windSpeedAPRS(gust)) + "t" + String(getBMPTempAPRS()) + "r...p...P..." + "h" + String(getHumAPRS()) + "b" + String(getPressureAPRS()) + "." + String(METEO_COMMENT) + " U=" + String(voltage) + "V";
+    //lora_send(meteoBeacon);
+    aprsis_send(meteoBeacon);
   }
   if (BMPstatus) {
     float temp = getBMPTempC();
-    int press = int(getPressure());
-    String stemp = String(temp);
-    String spress = String(press);
+    float press = getPressure();
+    String stemp = String(temp,1);
+    String spress = String(press,1);
     tempValues = addGraphValue(tempValues, stemp);
     if (temp < minTemp || minTemp == -1000) minTemp = temp;
     if (temp > maxTemp) maxTemp = temp;
@@ -613,6 +685,17 @@ void beacon_meteo() {
     tempValues = addGraphValue(tempValues, "N/A");
     pressValues = addGraphValue(pressValues, "N/A");
   }
+
+  if (AHTstatus) {
+    float Hum = getHum();
+    String sHum = String(Hum);
+    HumValues = addGraphValue(HumValues, sHum);
+    if (Hum > minHum || minHum == 30) minHum = Hum;
+    if (Hum < maxHum) maxHum = Hum;
+  } else {
+    HumValues = addGraphValue(HumValues, "N/A");
+  }
+
   if (USE_ANEMOMETER) {
     windValues = addGraphValue(windValues, String(windLongPeriodSpeed));
     if (windLongPeriodSpeed > maxWind) maxWind = windLongPeriodSpeed;
@@ -630,7 +713,7 @@ void beacon_meteo_status() {
 
 void beacon_upload() {
   lastUpload = millis();
-  if (Use_UPLOAD) upload_data(String(getBMPTempC()) + "," + String(int(getPressure())) + "," + String(windActualSpeed) + "," + String(windLongPeriodSpeed) + "," + String(voltage) + "," + String(gust));
+  if (Use_UPLOAD) upload_data(String(getBMPTempC()) + "," + String(int(getHum())) + "," + String(int(getPressure())) + "," + String(windActualSpeed) + "," + String(windLongPeriodSpeed) + "," + String(voltage) + "," + String(gust));
 }
 
 bool check_wifi() {
@@ -669,15 +752,23 @@ String getBMPTempAPRS() {
 
 float getPressure() {
   if (BMPstatus)
-    return (bmp.readPressure() / 100) + BMP_OFFSET_PRESS;
+    // return (bmp.readPressure() / 100) + BMP_OFFSET_PRESS;
+    {
+    return( (bmp.readPressure() * ( pow(1.0 - (0.0065 * atoi(METEO_ALTITUDE) * -1 / (273.15 + getBMPTempC() )), 5.255)) ) / 100 );
+ 
+    }
+    //return ( bmp.readPressure() * ( pow(1.0 - (0.0065 * atoi(METEO_ALTITUDE) * -1 / (273.15 + getBMPTempC() )), 5.255)) ) / 100;
   else
     return 0;
 }
 
 String getPressureAPRS() {
   if (BMPstatus) {
-  int press = getPressure();
-  press *= 10;
+  //float press = getPressure();
+  //press *= 10;
+  
+  float tmp_press = getPressure();
+  int press = (tmp_press*10);
   if (press > 99999) press = 0;
   String spress = String(press);
   if (press < 10000) spress = String("0") + String(spress);
@@ -689,6 +780,32 @@ String getPressureAPRS() {
     return "00000";
   }
 }
+
+
+
+float getHum() {
+  if (AHTstatus)
+    {
+      sensors_event_t humidity_event, temp_event;
+      aht.getEvent(&humidity_event, &temp_event);
+      float Hum2 = humidity_event.relative_humidity;
+      return Hum2;
+    }
+  else
+    return 0;
+}
+
+String getHumAPRS() {
+  if (AHTstatus) {
+    String sHum = String(int(getHum()));
+    return sHum;
+  } else {
+    return "..";
+  }
+}
+
+
+
 
 void hall_change() {
   windMeterSpins++;
@@ -723,7 +840,7 @@ void onWsEvent(AsyncWebSocket * server, AsyncWebSocketClient * client, AwsEventT
 }
 
 void updateWebSocket() {
-  ws.textAll(tempToWeb(getBMPTempC()) + "," + pressToWeb(int(getPressure())) + "," + windToWeb(windActualSpeed) + "," + windToWeb(windKMH(windActualSpeed)) + "," + windToWeb(gust) + "," + windToWeb(windLongPeriodSpeed));
+  ws.textAll(tempToWeb(getBMPTempC()) + "," + HumToWeb(getHum()) + "," + pressToWeb(getPressure()) + "," + windToWeb(windActualSpeed) + "," + windToWeb(windKMH(windActualSpeed)) + "," + windToWeb(gust) + "," + windToWeb(windLongPeriodSpeed));
   lastWSupdate = millis();
   //Serial.println("WS: Updated.");
 }
@@ -744,12 +861,17 @@ float windKMH(float windMS) {
 }
 
 String tempToWeb(float tempValue) {
-  if (BMPstatus) return String(tempValue);
+  if (BMPstatus) return String(tempValue,1);
   else return "N/A";
 }
 
-String pressToWeb(int pressValue) {
-  if (BMPstatus) return String(pressValue);
+String HumToWeb(float HumValue) {
+  if (AHTstatus) return String(HumValue,1);
+  else return "N/A";
+}
+
+String pressToWeb(float pressValue) {
+  if (BMPstatus) return String(pressValue,1);
   else return "N/A";
 }
 
@@ -839,4 +961,7 @@ bool GETIndex(String header, String requestPath) {
 
 bool getBMPstatus() {
   return BMPstatus;
+}
+bool getAHTstatus() {
+  return AHTstatus;
 }
