@@ -6,13 +6,12 @@
 #include <HTTPClient.h>
 #include <Adafruit_Sensor.h>
 #include <Adafruit_BMP280.h>
+#include <Adafruit_BME280.h>
 #include <Adafruit_AHTX0.h>
 #include <AsyncTCP.h>
 #include <ESPAsyncWebServer.h>
 #include "website.h"
-
-String VERSION = "4.1(cgw)";
-String DESTCALL = "APLGM4";
+#include <EEPROM.h>//https://github.com/espressif/arduino-esp32/tree/master/libraries/EEPROM
 
 void lora_setup();
 void lora_send(String tx_data);
@@ -30,7 +29,7 @@ bool check_aprsis();
 WiFiServer server(80);
 WiFiClient aprsis;
 HTTPClient upload;
-String APRSISServer = APRS_IS_Server;
+String APRSISServer;
 int pktIndex;
 int mpktIndex;
 int apktIndex;
@@ -59,15 +58,20 @@ static time_t lastIgBeacon = 0;
 static time_t lastMtBeacon = 0;
 static time_t lastUpload = 0;
 
+Adafruit_BME280 bme;
 Adafruit_BMP280 bmp;
 Adafruit_AHTX0 aht;
-bool BMPstatus = false;
+bool BM_sensor_status = false;
 bool AHTstatus = false;
-bool getBMPstatus();
-bool getAHTstatus();
+bool BMPstatus = false;
+bool BMEstatus = false;
 
-float getBMPTempC();
-String getBMPTempAPRS();
+bool getBM_sensor_status();
+bool getAHTstatus();
+bool getBMEstatus();
+
+float getTempC();
+String getTempAPRS();
 
 float getHum();
 String getHumAPRS();
@@ -87,8 +91,7 @@ String HumValues;
 String windValues;
 float minTemp = -1000;
 float maxTemp;
-float minHum = 10;
-float maxHum = 99;
+
 float minPress = -1000;
 float maxPress;
 float maxWind;
@@ -111,77 +114,307 @@ float windKMH(float windMS);
 float windLongPeriodSpeed = 0;
 float gust = 0;
 
-bool meteoSwitch = USE_METEO;
-bool aprsSwitch = Use_IGATE;
+bool meteoSwitch = true; // = USE_METEO
+bool aprsSwitch = true;  // = Use_IGATE
+bool digiSwitch = true;  // = USE_DIGIPEATER
+
+
+// -------------------------------------------------------------------------------------------
+// ---cgw----------------------------------------------------------------------------------------
+// -------------------------------------------------------------------------------------------
+
+
+//char Build[7] = "230729";
+
+// --- gli info sulle stringhe georeferenziate fisso per iGate - variabile per la meteo --- //
+//char igate_info[52]="";
+char meteo_info[52]="";   // variabile da accodare alla stringa meteo georeferenziata
+//char igate_info[53] = "https://github.com/iw1cgw/LoRa_APRS_Meteo_dds-cgw";
+
+// --- gli status sulle stringhe senza georeferenziazione --- //
+// per iGate viene indicato il valore dell'ultimo aascolto
+// per meteo viene indicato il bannet di GitHub
+
+void menu();
+void righello();
+void banner();
+void status_display();
+void initial_reset();
+void load_param();
+//void latlon_meteo_eraser();
+//void latlon_igate_eraser();
+
+void EEPROM_eraser(byte start, byte stop);
+void EEPROM_writer(byte start, byte stop, char tmp_data[50]);
+void EEPROM_loader(byte start, byte stop, char tmp_data[50]);
+void array_eraser(byte start, byte stop, char tmp_data[50]);
+void verifica_parametri();
+void APRS_LatLon();
+
+char lat_meteo[10] ="";
+char lon_meteo[11] ="";
+
+char lat_meteo_APRS[10];
+char lon_meteo_APRS[11];
+
+char lat_igate[10] = "";
+char lon_igate[11] = "";
+
+char lat_igate_APRS[10];
+char lon_igate_APRS[11];
+
+char frequencyC[7]="433775";
+
+char WiFi_ssiD[21]="";
+char WiFi_pwd[21]= "";
+
+char altitude[5]="";
+
+char call[7];
+String IGATE_CALLSIGN;
+String METEO_CALLSIGN;
+
+byte meteo_ssiD=3;
+byte igate_ssiD=10;
+
+char aprs_passcode[6] = "";
+char aprs_server[21] = "";
+
+unsigned LoRa_power=2;
+byte cnt_meteo_send=0;
+byte tx_interval=10;
+
+float drift_therm=0;
+char drift_thermC[6];
+
+  //Adafruit_BME280 bme; // use I2C interface
+  Adafruit_Sensor *bme_temp = bme.getTemperatureSensor();
+  Adafruit_Sensor *bme_pressure = bme.getPressureSensor();
+  Adafruit_Sensor *bme_humidity = bme.getHumiditySensor();;
+
+sensors_event_t humidity_event, temp_event, pressure_event;
+
+
+byte ch_term=0;
+
+byte ptr;
+byte sep;
+
+unsigned tmp;
+
+float minHum;
+float maxHum;
+
+char tmp_buffer[60]="";            // a supporto seriale e menu e caricamento EEPROM
+char carMenu;                   // a supporto seriale e menu
+char car;                       // a supporto seriale e menu
+
+
+byte cnt=0;                   // contatore invio stringhe meteo
+
+
+#define  EEPROM_SIZE  254  // // EEPROM size puo' indirizzare da 0 a 255
+#define bottom   ".. (m)enu - (d)isplay - (s)end meteo - (r)ead sensor ..\n"
+
+
+
+// -------------------------------------------------------------------------------------------
+// -------------------------------------------------------------------------------------------
+// -------------------------------------------------------------------------------------------
+
+
+
 
 void setup() {
   
-  
-  
+ //Init EEPROM
   
   Serial.begin(SERIAL_BAUD);
-  Serial.println("\n\nLoRa Meteo v" + String(VERSION) + "\nby OK2DDS\n");
+  Serial.println( "\n" + String(Project) + " v." + String(Release) + "\nmodified by IW1CGW based on OK2DDS' project\n");
+   
+  EEPROM.begin(EEPROM_SIZE);
+  load_param();
+  verifica_parametri();
   lora_setup();
   delay(25);
-  if (Use_WiFi) {
-    WiFi.setAutoReconnect(true);
-    WiFi.setHostname(Hostname);
-    WiFi.begin(ssid, password);
-    Serial.println("Connecting to WiFi..");
-    wifiStatus = true;
-    myIP = ipToString(WiFi.localIP());
-    server.begin();
-    ws.onEvent(onWsEvent);
-    serverWS.addHandler(&ws);
-    serverWS.begin();
-    if (Use_IGATE && check_wifi()) {
-      aprsis_connect();
-    }
-  }
 
-  // BMP
+
+  BM_sensor_status = false;
   BMPstatus = false;
-  if (!bmp.begin(0x76)) {
-    Serial.println("BMP280 not connected 0x76");
-    } else {
-    Serial.println("BMP280 0x76 OK");
-    BMPstatus = true;
-  }
+  BMEstatus = false;
+  AHTstatus = false;
+
+  //------------------------------ test del AHT20
+  if (!aht.begin()) {}
+  else
+    {
+      Serial.println("AHT20 OK");
+      AHTstatus = true;
+    } 
   
-  if (!bmp.begin(0x77)) {
-    Serial.println("BMP280 not connected 0x77");
-    } else {
-    Serial.println("BMP280 0x77 OK");
-    BMPstatus = true;
-  }
+  //------------------------------ test del BME280
+  if (AHTstatus == false)
+    {
+      if (!bme.begin(0x76)) {}
+      else 
+        {
+          BMEstatus = true;
+          BM_sensor_status = true;
+          Serial.println("BME280 0x76 OK");
+        }
+    }
 
- // AHT
-  if (!aht.begin()) {
-    Serial.println("AHT20 not connected");
-    AHTstatus = false;
-  } else {
-    Serial.println("AHT20 OK");
-    AHTstatus = true;
-  }
+//------------------------------ test del BMP280 su 2 possibili indirizzi 0x77 se integrato con AHT20 o 0x76 se stand alone
+
+  if (AHTstatus == true && BMEstatus == false)
+    {
+      if (!bmp.begin(0x77)) {}
+      else
+        {
+          Serial.println("BMP280 0x77 OK");
+          BMPstatus = true;
+          BM_sensor_status = true;
+        }
+    }
+ 
+ if (AHTstatus == false && BMEstatus == false)
+    {
+      if (!bmp.begin(0x76)) {}
+      else
+        {
+          Serial.println("BMP280 0x76 OK");
+          BMPstatus = true;
+          BM_sensor_status = true;
+        }
+    }
 
 
-
-
+  if (BM_sensor_status == false) Serial.println(F("no sensor BMP/BME found"));
+  
   // HALL - digital
   if (USE_ANEMOMETER) pinMode(HALL_SENSOR_PIN, INPUT);
   //attachInterrupt(digitalPinToInterrupt(HALL_SENSOR_PIN), hall_change, HIGH);
 
-  if (Use_IGATE) lastIgBeacon = millis() - int(IGATE_BEACON * 60000);
-  delay(1000);
   voltage = float(analogRead(HALL_SENSOR_PIN)) / 4095*2*3.3*1.1;
   delay(10);
-  beacon_meteo();
-  Serial.println("Startup finished.");
+
+  if (Use_WiFi) {
+    WiFi.setAutoReconnect(true);
+    WiFi.setHostname(Hostname);
+    WiFi.begin(WiFi_ssiD, WiFi_pwd);
+
+    Serial.println("Connecting to WiFi..");
+    delay(500);
+    wifiStatus = true;
+    myIP = ipToString(WiFi.localIP());
+    Serial.println("IP: " + myIP);
+    server.begin();
+    ws.onEvent(onWsEvent);
+    serverWS.addHandler(&ws);
+    serverWS.begin();
+    delay(500);
+    if (aprsSwitch && check_wifi()) {
+      aprsis_connect();
+    }
+    delay(500);
+  }
+
+  Serial.println("Startup finished.\n");
+  status_display();
+  delay(500);
+  if (meteoSwitch) lastMtBeacon = millis() - int(tx_interval * 60000);
+  delay(500);
+  if (aprsSwitch) lastIgBeacon = millis() - int(tx_interval * 60000);
+  
 }
 
 void loop() {
-  
-  
+
+/*
+  ---------------------------------------------------------------------------
+    LETTURA FLUSSI SULLA SERIALE
+
+    i dati utili si intendono quelli racchiusi entro la trama che
+    inizia con '[' e termina con ']'
+    i valori racchiusi sono incapsulati nella String 'tmp_string'
+  ---------------------------------------------------------------------------
+  */
+    car = Serial.read();
+    if (car == 'm' )
+      {
+        while (Serial.read() != '\n') {};
+        menu();
+      }
+
+    if (car == 'd' )
+      {
+        while (Serial.read() != '\n') {};
+        status_display();
+      }
+
+    if (car == 't' )
+      {
+        while (Serial.read() != '\n') {};
+        beacon_igate();
+      }
+
+    if (car == 's' )
+      {
+        while (Serial.read() != '\n') {};
+        beacon_meteo();
+      }
+
+
+    if (car == 'r' )
+      {
+        while (Serial.read() != '\n') {};
+        
+        righello();
+        
+        if ( BM_sensor_status )
+          {
+            float temp = getTempC();
+            String stemp = String(temp,1);
+            float press = getPressure();
+            String spress = String(press,1);
+            float Hum = getHum();
+            String sHum = String(Hum);
+
+            Serial.print(F("therm: "));
+            Serial.print(stemp);
+            Serial.println(F(" C."));
+                
+            Serial.print(F("hum: "));
+            Serial.print(sHum);
+            Serial.println(F(" %"));
+
+            Serial.print(F("press SLM: "));
+            Serial.print(spress);
+            Serial.println(F(" hPA"));
+
+            righello();
+        
+          }
+      }
+
+
+    if (car == '#')          
+      {
+        while (Serial.read() != '\n') {};
+        EEPROM_eraser(0,250);
+        Serial.println(F("EEPROM erased"));
+      }
+
+    if (car == 'e')          
+      {
+        while (Serial.read() != '\n') {};
+        tmp = 0;
+        while (tmp <= 250)
+          {
+           Serial.print(tmp); Serial.print(F(" - ")); Serial.println(EEPROM.read(tmp));
+           tmp++;    
+          } 
+      }
 
     
   if (check_wifi() && wifiStatus == false) {
@@ -194,7 +427,7 @@ void loop() {
     WiFi.reconnect();
   }
   if (Use_WiFi && check_wifi()) {
-    if (aprsSwitch && Use_IGATE && !check_aprsis() && aprsLastReconnect + 60000 < millis()) {
+    if (aprsSwitch && aprsSwitch && !check_aprsis() && aprsLastReconnect + 60000 < millis()) {
       aprsis.stop();
       delay(100);
       aprsLastReconnect = millis();
@@ -232,24 +465,40 @@ void loop() {
             if (GETIndex(header, "/api")) {
               // API responses without user frontend layout
               if (GETIndex(header, "/api/meteo"))
-                client.println(tempToWeb(getBMPTempC()) + "," + "," + HumToWeb(int(getHum())) + pressToWeb(getPressure()) );
+                client.println(tempToWeb(getTempC()) + "," + "," + HumToWeb(int(getHum())) + pressToWeb(getPressure()) );
               if (GETIndex(header, "/api/graphs-json"))
                 client.println("{\"temperature\": [" + String(tempValues) + "], \"pressure\": [" + String(pressValues) + "], \"Hum\": [" + String(HumValues) + "], \"wind\": [" + String(windValues) + "]}");
               if (GETIndex(header, "/api/json"))
-                client.println("{\"general\": {\"version\":\"" + String(VERSION) + "\", \"destcall\":\"" + String(DESTCALL) + "\", \"system_time\":" + String(millis()) + ", \"voltage\":" + String(voltage) + ", \"battery\":" + String(battPercent) + ", \"wifi_status\":" + (check_wifi() ? "true" : "false") + ", \"wifi_signal_db\":" + (check_wifi() ? String(WiFi.RSSI()) : "0") + ", \"wifi_ssid\":\"" + String(WiFi.SSID()) + "\", \"wifi_hostname\":\"" + String(Hostname) + "\", \"bmp280_status\":" + (getBMPstatus() ? "true" : "false") + "}, \"lora\": {\"meteo_callsign\":\"" + String(METEO_CALLSIGN) + "\", \"meteo_enabled\":" + (meteoSwitch ? "true" : "false") + ", \"igate_callsign\":\"" + String(IGATE_CALLSIGN) + "\", \"aprs_is_enabled\":" + (aprsSwitch ? "true" : "false") + ", \"aprs_is_status\":" + (check_aprsis() ? "true" : "false") + ", \"aprs_is_server\":\"" + (check_aprsis() ? String(APRSISServer) : "disconnected") + "\", \"hall_sensor\":" + String(anemoACValue) + ", \"last_rx\":\"" + String(lastRXstation) + "\"" + "}, \"meteo\": {\"temperature\":" + valueForJSON(tempToWeb(getBMPTempC())) + ", \"pressure\":" + valueForJSON(pressToWeb(getPressure()))  + ", \"Hum\":" + valueForJSON(HumToWeb(getHum())) + ", \"actual_wind\":" + valueForJSON(windToWeb(windActualSpeed)) + ", \"long_period_wind\":" + valueForJSON(windToWeb(windLongPeriodSpeed)) + ", \"gust\":" + valueForJSON(windToWeb(gust)) + ", \"min_temperature\":" + (getBMPstatus() ? String(minTemp) : "0") + ", \"max_temperature\":" + (getBMPstatus() ? String(maxTemp) : "0") + ", \"min_pressure\":" + (getBMPstatus() ? String(minPress) : "0") + ", \"max_pressure\":" + (getBMPstatus() ? String(maxPress) : "0") + ", \"max_wind\":" + String(maxWind) + ", \"max_gust\":" + String(maxGust) + "}}");
+                //client.println("{\"general\": {\"version\":\"" + String(Release) + "\", \"destcall\":\"" + String(DESTCALL) + "\", \"system_time\":" + String(millis()) + ", \"voltage\":" + String(voltage) + ", \"battery\":" + String(battPercent) + ", \"wifi_status\":" + (check_wifi() ? "true" : "false") + ", \"wifi_signal_db\":" + (check_wifi() ? String(WiFi.RSSI()) : "0") + ", \"wifi_ssid\":\"" + String(WiFi.SSID()) + "\", \"wifi_hostname\":\"" + String(Hostname) + "\", \"bmp280_status\":" + (getBM_sensor_status() ? "true" : "false") + "}, \"lora\": {\"METEO_CALLSIGN\":\"" + String(METEO_CALLSIGN) + "\", \"meteo_enabled\":" + (meteoSwitch ? "true" : "false") + ", \"igate_callsign\":\"" + String(IGATE_CALLSIGN) + "\", \"aprs_is_enabled\":" + (aprsSwitch ? "true" : "false") + ", \"aprs_is_status\":" + (check_aprsis() ? "true" : "false") + ", \"aprs_server\":\"" + (check_aprsis() ? String(APRSISServer) : "disconnected") + "\", \"hall_sensor\":" + String(anemoACValue) + ", \"last_rx\":\"" + String(lastRXstation) + "\"" + "}, \"meteo\": {\"temperature\":" + valueForJSON(tempToWeb(getTempC())) + ", \"pressure\":" + valueForJSON(pressToWeb(getPressure()))  + ", \"Hum\":" + valueForJSON(HumToWeb(getHum())) + ", \"actual_wind\":" + valueForJSON(windToWeb(windActualSpeed)) + ", \"long_period_wind\":" + valueForJSON(windToWeb(windLongPeriodSpeed)) + ", \"gust\":" + valueForJSON(windToWeb(gust)) + ", \"min_temperature\":" + (getBM_sensor_status() ? String(minTemp) : "0") + ", \"max_temperature\":" + (getBM_sensor_status() ? String(maxTemp) : "0") + ", \"min_pressure\":" + (getBM_sensor_status() ? String(minPress) : "0") + ", \"max_pressure\":" + (getBM_sensor_status() ? String(maxPress) : "0") + ", \"max_wind\":" + String(maxWind) + ", \"max_gust\":" + String(maxGust) + "}}");
+                client.println("{\"general\": {\"version\":\"" + String(Release) + "\", \"destcall\":\"" + String(DESTCALL) + "\", \"system_time\":" + String(millis()) + ", \"voltage\":" + String(voltage) + ", \"battery\":" + String(battPercent) + ", \"wifi_status\":" + (check_wifi() ? "true" : "false") + ", \"wifi_signal_db\":" + (check_wifi() ? String(WiFi.RSSI()) : "0") + ", \"wifi_ssid\":\"" + String(WiFi.SSID()) + "\", \"wifi_hostname\":\"" + String(Hostname) + "\", \"bmp280_status\":" + (getBM_sensor_status() ? "true" : "false") + "}, \"lora\": {\"METEO_CALLSIGN\":\"" + String(METEO_CALLSIGN) + "\", \"digi_enabled\":" + (digiSwitch ? "true" : "false") + "\", \"meteo_enabled\":" + (meteoSwitch ? "true" : "false") + ", \"igate_callsign\":\"" + String(IGATE_CALLSIGN) + "\", \"aprs_is_enabled\":" + (aprsSwitch ? "true" : "false") + ", \"aprs_is_status\":" + (check_aprsis() ? "true" : "false") + ", \"aprs_server\":\"" + (check_aprsis() ? String(APRSISServer) : "disconnected") + "\", \"hall_sensor\":" + String(anemoACValue) + ", \"last_rx\":\"" + String(lastRXstation) + "\"" + "}, \"meteo\": {\"temperature\":" + valueForJSON(tempToWeb(getTempC())) + ", \"pressure\":" + valueForJSON(pressToWeb(getPressure()))  + ", \"Hum\":" + valueForJSON(HumToWeb(getHum())) + ", \"actual_wind\":" + valueForJSON(windToWeb(windActualSpeed)) + ", \"long_period_wind\":" + valueForJSON(windToWeb(windLongPeriodSpeed)) + ", \"gust\":" + valueForJSON(windToWeb(gust)) + ", \"min_temperature\":" + (getBM_sensor_status() ? String(minTemp) : "0") + ", \"max_temperature\":" + (getBM_sensor_status() ? String(maxTemp) : "0") + ", \"min_pressure\":" + (getBM_sensor_status() ? String(minPress) : "0") + ", \"max_pressure\":" + (getBM_sensor_status() ? String(maxPress) : "0") + ", \"max_wind\":" + String(maxWind) + ", \"max_gust\":" + String(maxGust) + "}}");
             } else {
             client.println(String(webPageStart));
             if (!GETIndex(header, "/watch")) client.println(String(webPageHeader) + "</h1><br>");
             if (GETIndex(header, "/switch-meteo")) {
               meteoSwitch = !meteoSwitch;
+              if (meteoSwitch == true ) EEPROM.write(165,1);
+              if (meteoSwitch == false) EEPROM.write(165,0);
+              EEPROM.commit();
               client.println(webReload);
             }
             if (GETIndex(header, "/switch-aprs")) {
               aprsSwitch = !aprsSwitch;
+              if (aprsSwitch == true ) EEPROM.write(166,1);
+              if (aprsSwitch == false) EEPROM.write(166,0);
+              EEPROM.commit();
               client.println(webReload);
               aprsis.stop();
               delay(100);
             }
+            if (GETIndex(header, "/switch-digi")) {
+              digiSwitch = !digiSwitch;
+              if (digiSwitch == true ) EEPROM.write(167,1);
+              if (digiSwitch == false) EEPROM.write(167,0);
+              EEPROM.commit();
+              client.println(webReload);
+              delay(100);
+            }
+
             if (GETIndex(header, "/restart")) {
               client.println();
               ESP.restart();
@@ -261,18 +510,15 @@ void loop() {
               client.println("<br>TX reset done.<br>");
             }
             if (GETIndex(header, "/reset-temp")) {
-              minTemp = getBMPTempC();
+              minTemp = getTempC();
               maxTemp = minTemp;
               client.println("<br>Temperature reset done.<br>");
             }
             if (GETIndex(header, "/reset-hum")) {
-              minTemp = getHum();
-              maxTemp = minHum;
+              minHum = getHum();
+              maxHum = minHum;
               client.println("<br>Humidity reset done.<br>");
             }
-
-
-
 
             if (GETIndex(header, "/reset-press")) {
               minPress = getPressure();
@@ -280,7 +526,7 @@ void loop() {
               client.println("<br>Pressure reset done.<br>");
             }
             if (GETIndex(header, "/reset-bmp")) {
-              minTemp = getBMPTempC();
+              minTemp = getTempC();
               maxTemp = minTemp;
               minPress = getPressure();
               maxPress = minPress;
@@ -293,16 +539,16 @@ void loop() {
             }
             if (GETIndex(header, "/lora"))
               // --- original --- // client.println("<br>Version: " + String(VERSION) + "<br><br> Voltage: " + String(voltage) + "V<br>Battery: " + String(battPercent) + "%<br>Wi-Fi: " + (check_wifi() ? String(WiFi.SSID()) + " " + String(WiFi.RSSI()) + " dB<br>IP: " + ipToString(WiFi.localIP()) : String("not connected")) + String("<br>APRS-IS: ") + (aprsis.connected() ? "connected" : "not connected") + "<br>Last RX: " + String(lastRXstation) + "<br>Hall sensor: " + String(anemoACValue) + "<br><br>");
-              client.println("Version: " + String(VERSION) + "<br><br> Voltage: " + String(voltage) + " - Battery: " + String(battPercent) + "%<br>Wi-Fi: " + (check_wifi() ? String(WiFi.SSID()) + " " + String(WiFi.RSSI()) + " dB<br>IP: " + ipToString(WiFi.localIP()) : String("not connected")) + String("<br>APRS-IS: ") + (aprsis.connected() ? "connected" : "not connected") + "<br>Last RX: " + String(lastRXstation) + "<br><br>");
-            if ((GETIndex(header, "/lora") || GETIndex(header, "/min-max")) && USE_METEO && (BMPstatus || USE_ANEMOMETER)) {
+              client.println("Version: " + String(Release) + "<br><br> Voltage: " + String(voltage) + " - Battery: " + String(battPercent) + "%<br>Wi-Fi: " + (check_wifi() ? String(WiFi.SSID()) + " " + String(WiFi.RSSI()) + " dB<br>IP: " + ipToString(WiFi.localIP()) : String("not connected")) + String("<br>APRS-IS: ") + (aprsis.connected() ? "connected" : "not connected") + "<br>Last RX: " + String(lastRXstation) + "<br><br>");
+            if ((GETIndex(header, "/lora") || GETIndex(header, "/min-max")) && meteoSwitch && (BM_sensor_status || USE_ANEMOMETER)) {
               client.println("<table><tr><td></td><td><b>Minimum</b></td><td><b>Maximum</b></td></tr>");
               
-              if (BMPstatus) {
+              if (BM_sensor_status) {
                 client.println("<tr><td><b>Temperature</b></td><td>" + String(minTemp) + " &deg;C</td><td>" + String(maxTemp) + " &deg;C</td></tr>");
                 client.println("<tr><td><b>PressureSLM</b></td><td>" + String(minPress) + " hPa</td><td>" + String(maxPress) + " hPa</td></tr>");
               }
               
-              if (AHTstatus) {  
+              if (AHTstatus == true || BMEstatus == true ) {  
                 client.println("<tr><td><b>% Hum</b></td><td>" + String(minHum) + " %</td><td>" + String(maxHum) + " %</td></tr>");
               }
               
@@ -314,24 +560,28 @@ void loop() {
             }
             if (GETIndex(header, "/lora")) {
               // --- original --- // client.println("<br>Reset values<br><a href='/reset-bmp'>BMP values</a> - <a href='/reset-temp'>Temperature</a> - <a href='/reset-press'>Pressure</a> - <a href='/reset-wind'>Wind</a><br>");
-              client.println("<br>Reset values<br><a href='/reset-temp'>Temperature</a> - <a href='/reset-hum'>Humidity</a> - <a href='/reset-press'>Pressure</a><br>");
+              
+              if (AHTstatus == true || BMEstatus == true )   client.println("<br>Reset values<br><a href='/reset-temp'>Temperature</a> - <a href='/reset-hum'>Humidity</a> - <a href='/reset-press'>Pressure</a><br>");
+              else client.println("<br>Reset values<br><a href='/reset-temp'>Temperature</a> - <a href='/reset-press'>Pressure</a><br>");
+       
               client.println("<br><a href='/switch-meteo'>Turn meteo On/Off</a> (" + String(meteoSwitch ? "ON" : "OFF") + ")");
               client.println("<br><a href='/switch-aprs'>Turn IGate On/Off</a> (" + String(aprsSwitch ? "ON" : "OFF") + ")");
+              client.println("<br><a href='/switch-digi'>Turn digipeater On/Off</a> (" + String(digiSwitch ? "ON" : "OFF") + ")");
               // --- original --- // client.println("<br><a href='/change-aprsis'>Change APRS-IS server</a> (" + String(APRSISServer) + ")");
               client.println("<br><a href='/restart'>Restart device</a>");
               client.println("<br><br><a href='/'>View main meteo page</a>");
             }
             if (GETIndex(header, "/graphs")) {
-              if (BMPstatus || USE_ANEMOMETER)
+              if (BM_sensor_status || USE_ANEMOMETER)
                 client.println("<script src='https://cdnjs.cloudflare.com/ajax/libs/Chart.js/2.9.4/Chart.js'></script>");
               else
                 client.println("<br>No graphs to display.<br>");
-              if (BMPstatus) {
+              if (BM_sensor_status) {
                 client.println(generateGraph(tempValues, "Temperature", "temp", 230, 0, 0));
                 client.println(generateGraph(pressValues, "Pressure", "press", 0, 125, 0));
               }  
 
-              if (AHTstatus) {
+              if (AHTstatus == true || BMEstatus == true ) {
                 client.println(generateGraph(HumValues, "% Hum", "Hum", 0, 100, 0));
               }
 
@@ -375,7 +625,7 @@ void loop() {
               apktIndex = header.indexOf("GET /new-aprsis");
               String newServer = header.substring(apktIndex + 16, header.indexOf("HTTP/") - 1);
               Serial.println("New APRS-IS server request: " + String(newServer));
-              if (newServer != "null" && Use_WiFi && Use_IGATE && check_wifi()) {
+              if (newServer != "null" && Use_WiFi && aprsSwitch && check_wifi()) {
                 String backupServer = APRSISServer;
                 APRSISServer = newServer;
                 aprsis.stop();
@@ -412,7 +662,7 @@ void loop() {
             if (GETIndex(header, "/watch")) {
               // METEO WEBSITE LAYOUT FOR WATCH
               client.println(webMeteoWatchLayout);
-              client.println("<script>var dat = '" + tempToWeb(getBMPTempC()) + "," + HumToWeb(int(getHum())) + pressToWeb(getPressure()) + "," + windToWeb(windActualSpeed) + "," + windToWeb(windKMH(windActualSpeed)) + "'; ");
+              client.println("<script>var dat = '" + tempToWeb(getTempC()) + "," + HumToWeb(int(getHum())) + pressToWeb(getPressure()) + "," + windToWeb(windActualSpeed) + "," + windToWeb(windKMH(windActualSpeed)) + "'; ");
               client.println(HTMLelementDef("temp") + HTMLelementDef("Hum") +  HTMLelementDef("press") + HTMLelementDef("wind") + HTMLelementDef("windkmh"));
                           
               client.println(webWatchValuesScript);
@@ -439,8 +689,8 @@ void loop() {
   ws.cleanupClients();
   if (Use_WiFi && isWSconnected && lastWSupdate + 700 < millis()) updateWebSocket();
 
-  if (Use_IGATE && check_wifi() && check_aprsis() && lastIgBeacon + (IGATE_BEACON * 60000) < millis()) beacon_igate();
-  if (meteoSwitch && lastMtBeacon + (METEO_BEACON * 60000) < millis()) beacon_meteo();
+  if (aprsSwitch && check_wifi() && check_aprsis() && lastIgBeacon + (tx_interval * 60000) < millis()) beacon_igate();
+  if (meteoSwitch && lastMtBeacon + (tx_interval * 60000) < millis()) beacon_meteo();
   if (Use_UPLOAD && check_wifi() && lastUpload + (UPLOAD_TIMEOUT * 60000) < millis()) beacon_upload();
 
   voltage = float(analogRead(HALL_SENSOR_PIN)) / 4095*2*3.3*1.1;
@@ -460,7 +710,7 @@ void loop() {
     rxPacket = rxPacket.substring(3,(rxPacket.length()-1));
     Serial.println("RX: " + rxPacket);
 
-    if (!(rxPacket.length() < 5 || rxPacket.indexOf('>') < 5 || rxPacket.indexOf(':') < rxPacket.indexOf('>') || rxPacket.substring(rxPacket.indexOf('>') + 1, rxPacket.indexOf(':')) == "") && Use_IGATE && Use_WiFi && aprsSwitch) {
+    if (!(rxPacket.length() < 5 || rxPacket.indexOf('>') < 5 || rxPacket.indexOf(':') < rxPacket.indexOf('>') || rxPacket.substring(rxPacket.indexOf('>') + 1, rxPacket.indexOf(':')) == "") && aprsSwitch && Use_WiFi && aprsSwitch) {
       String igatePacket = rxPacket;
       if (igatePacket.indexOf("NOGATE") == -1 && igatePacket.indexOf("RFONLY") == -1 && igatePacket.indexOf("TCPIP") == -1 && igatePacket.indexOf("TCPXX") == -1 && igatePacket.indexOf(String(METEO_CALLSIGN)) == -1 && igatePacket.indexOf(String(IGATE_CALLSIGN) + "*") == -1 && rxPacket.substring(0, rxPacket.indexOf('>')) != String(IGATE_CALLSIGN)) {
         igatePacket = igatePacket.substring(0, igatePacket.indexOf(":")) + ",qAO," + String(IGATE_CALLSIGN) + igatePacket.substring(igatePacket.indexOf(":"));
@@ -492,7 +742,7 @@ void loop() {
       if (int callIndex = digiPath.indexOf(String(IGATE_CALLSIGN)) > -1 && digiPath.indexOf(String(IGATE_CALLSIGN) + "*") == -1) {
         digiPath = digiPath.substring(0, callIndex - 1) + digiPath.substring(callIndex + String(IGATE_CALLSIGN).length());
       }
-      if (int paradigmIndex = digiPath.indexOf("WIDE1-") > -1 && USE_DIGIPEATER && digiPath.indexOf(String(IGATE_CALLSIGN) + "*") == -1 && rxPacket.indexOf(String(METEO_CALLSIGN)) == -1 && sourceCall.indexOf(String(IGATE_CALLSIGN)) == -1) {
+      if (int paradigmIndex = digiPath.indexOf("WIDE1-") > -1 && digiSwitch && digiPath.indexOf(String(IGATE_CALLSIGN) + "*") == -1 && rxPacket.indexOf(String(METEO_CALLSIGN)) == -1 && sourceCall.indexOf(String(IGATE_CALLSIGN)) == -1) {
         paradigmIndex = digiPath.indexOf("WIDE1-");
         if (paradigmIndex == 0)
           paradigmIndex = 1;
@@ -507,7 +757,7 @@ void loop() {
           digiPath = "," + digiPath;
         digiPacket = sourceCall + ">" + destCall + digiPath + ":" + message;
         lora_send(digiPacket);
-      } else if (USE_DIGIPEATER && DIGI_IGNORE_PARADIGM && digiPath.indexOf("*") == -1 && (millis() > lastDigipeat + 600000 || lastDigipeat == 0) && digiPath.indexOf(String(IGATE_CALLSIGN) + "*") == -1 && rxPacket.indexOf(String(METEO_CALLSIGN)) == -1 && sourceCall.indexOf(String(IGATE_CALLSIGN)) == -1) {
+      } else if (digiSwitch && DIGI_IGNORE_PARADIGM && digiPath.indexOf("*") == -1 && (millis() > lastDigipeat + 600000 || lastDigipeat == 0) && digiPath.indexOf(String(IGATE_CALLSIGN) + "*") == -1 && rxPacket.indexOf(String(METEO_CALLSIGN)) == -1 && sourceCall.indexOf(String(IGATE_CALLSIGN)) == -1) {
         lastDigipeat = millis();
         digiPath = digiPath + "," + String(IGATE_CALLSIGN) + "*";
         if (digiPath.indexOf(",") != 0)
@@ -516,7 +766,7 @@ void loop() {
         digiPacket = sourceCall + ">" + destCall + digiPath + ":" + message;
         lora_send(digiPacket);
 	    // do not digipeat without WIDE1-1
-      } else if (USE_DIGIPEATER && DIGI_IGNORE_PARADIGM) {
+      } else if (digiSwitch && DIGI_IGNORE_PARADIGM) {
         Serial.println("Station not repeated.");
       }
       digiOutput = true;
@@ -531,7 +781,7 @@ void loop() {
   }
   }
 
-  while (Use_IGATE && check_aprsis() && aprsis.available()) {
+  while (aprsSwitch && check_aprsis() && aprsis.available()) {
     String apstring;
     char aprx = aprsis.read();
     apstring += aprx;
@@ -579,7 +829,7 @@ void loop() {
 void lora_setup() {
   SPI.begin(LoRa_SCK, LoRa_MISO, LoRa_MOSI, LoRa_SS);
   LoRa.setPins(LoRa_SS, LoRa_RST, LoRa_DIO0);
-  if (!LoRa.begin(LoRa_Frequency)) {
+  if (!LoRa.begin(atoi(frequencyC)*1000)) {
     Serial.println("Failed to setup LoRa module.");
     while (1);
   }
@@ -587,15 +837,15 @@ void lora_setup() {
   LoRa.setSignalBandwidth(LoRa_SignalBandwidth);
   LoRa.setCodingRate4(LoRa_CodingRate4);
   LoRa.enableCrc();
-  LoRa.setTxPower(LoRa_TxPower);
+  LoRa.setTxPower(LoRa_power);
   delay(3000);
-  if (!Use_IGATE) {
-    LoRa.sleep();
+  if (!aprsSwitch) {
+    //LoRa.sleep();
   }
 }
 
 void lora_send(String tx_data) {
-  LoRa.setFrequency(LoRa_Frequency);
+  LoRa.setFrequency(atoi(frequencyC)*1000);
   LoRa.beginPacket();
   LoRa.write('<');
   LoRa.write(0xFF);
@@ -603,21 +853,21 @@ void lora_send(String tx_data) {
   Serial.println("TX: " + tx_data);
   LoRa.write((const uint8_t *)tx_data.c_str(), tx_data.length());
   LoRa.endPacket();
-  LoRa.setFrequency(LoRa_Frequency);
-  if (!Use_IGATE) {
-    LoRa.sleep();
+  LoRa.setFrequency(atoi(frequencyC)*1000);
+  if (!aprsSwitch) {
+    //LoRa.sleep();
   }
 }
 
 void aprsis_connect() {
-  if (Use_WiFi && Use_IGATE) {
+  if (Use_WiFi && aprsSwitch) {
     if (aprsis.connect(APRSISServer.c_str(), APRS_IS_Port)) {
       Serial.println("APRS-IS OK");
     } else {
       Serial.println("APRS-IS error");
     }
     if (check_wifi() && check_aprsis()) {
-      aprsis.println("user " + String(IGATE_CALLSIGN) + " pass " + String(APRS_IS_Password) + " vers LoRa_APRS_Meteo " + String(VERSION));
+      aprsis.println("user " + String(IGATE_CALLSIGN) + " pass " + String(aprs_passcode) + " vers LoRa_APRS_Meteo " + String(Release));
       aprsSwitch = true;
     }
   }
@@ -638,7 +888,8 @@ void upload_data(String upload_data) {
 }
 
 void aprsis_send(String aprsis_packet) {
-  if (!check_aprsis() && aprsSwitch && Use_IGATE && check_wifi()) {
+  if (!check_aprsis() && aprsSwitch && aprsSwitch && check_wifi())
+   {
     aprsis.stop();
     delay(100);
     aprsis_connect();
@@ -652,26 +903,28 @@ void aprsis_send(String aprsis_packet) {
 
 void beacon_igate() {
   lastIgBeacon = millis();
-  if (Use_IGATE && check_wifi()) {
-    String beacon = String(IGATE_CALLSIGN) + ">" + String(DESTCALL) + ":!" + String(IGATE_LAT) + "L" + String(IGATE_LON) + "&" + String(IGATE_COMMENT) + String(" | batt:") + String(voltage);
+  if (aprsSwitch && check_wifi()) {
+    String beacon = String(IGATE_CALLSIGN) + ">" + String(DESTCALL) + ":!" + String(lat_igate_APRS) + "L" + String(lon_igate_APRS) + "&" + String(igate_info) + String(" | batt:") + String(voltage)+"V";
     if (IGATE_BCN_NETWORK) {
       aprsis_send(beacon);
-    } else if (Use_IGATE) {
+    } else if (aprsSwitch) {
       lora_send(beacon);
     }
-    if (check_wifi() && USE_METEO_STATUS) beacon_meteo_status();
+    //if (check_wifi() && USE_METEO_STATUS) beacon_meteo_status();
   }
 }
 
 void beacon_meteo() {
+  
   lastMtBeacon = millis();
-  if (meteoSwitch && BMPstatus) {
-    String meteoBeacon = String(METEO_CALLSIGN) + ">" + String(DESTCALL) + ":!" + String(METEO_LAT) + "/" + String(METEO_LON) + "_.../" + String(windSpeedAPRS(windLongPeriodSpeed)) + "g" +  String(windSpeedAPRS(gust)) + "t" + String(getBMPTempAPRS()) + "r...p...P..." + "h" + String(getHumAPRS()) + "b" + String(getPressureAPRS()) + "." + String(METEO_COMMENT) + " U=" + String(voltage) + "V";
-    //lora_send(meteoBeacon);
-    aprsis_send(meteoBeacon);
-  }
-  if (BMPstatus) {
-    float temp = getBMPTempC();
+
+  if  (cnt_meteo_send > METEO_STATUS_SEND_INTERVAL ) cnt_meteo_send=0;
+  beacon_meteo_status();
+  cnt_meteo_send++;
+
+
+  if (BM_sensor_status) {
+    float temp = getTempC();
     float press = getPressure();
     String stemp = String(temp,1);
     String spress = String(press,1);
@@ -686,15 +939,27 @@ void beacon_meteo() {
     pressValues = addGraphValue(pressValues, "N/A");
   }
 
-  if (AHTstatus) {
+  if ( AHTstatus == true || BMEstatus == true )
+   {
     float Hum = getHum();
     String sHum = String(Hum);
     HumValues = addGraphValue(HumValues, sHum);
-    if (Hum > minHum || minHum == 30) minHum = Hum;
-    if (Hum < maxHum) maxHum = Hum;
-  } else {
+    if ( Hum < minHum || minHum == 0 ) minHum = Hum;
+    if ( Hum > maxHum ) maxHum = Hum;
+    }
+  else {
     HumValues = addGraphValue(HumValues, "N/A");
   }
+  
+  if (meteoSwitch && BM_sensor_status) {
+     String meteoBeacon = String(METEO_CALLSIGN) + ">" + String(DESTCALL) + ":!" + String(lat_meteo_APRS) + "/" + String(lon_meteo_APRS) + "_.../" + String(windSpeedAPRS(windLongPeriodSpeed)) + "g" +  String(windSpeedAPRS(gust)) + "t" + String(getTempAPRS()) + "r...p...P..." + "h" + String(getHumAPRS()) + "b" + String(getPressureAPRS())+"." + String(meteo_info);
+     //Serial.println(meteoBeacon);
+     //lora_send(meteoBeacon);
+     aprsis_send(meteoBeacon);
+    
+
+}
+
 
   if (USE_ANEMOMETER) {
     windValues = addGraphValue(windValues, String(windLongPeriodSpeed));
@@ -707,13 +972,16 @@ void beacon_meteo() {
 }
 
 void beacon_meteo_status() {
-  String meteoStatus = String(METEO_CALLSIGN) + ">" + String(DESTCALL) + ":>" + String(METEO_STATUS);
-  aprsis_send(meteoStatus);
+  if (cnt_meteo_send == 0 )
+    {
+      String meteoStatus = String(METEO_CALLSIGN) + ">" + String(DESTCALL) + ":>" + String(METEO_STATUS);
+      aprsis_send(meteoStatus);
+    }  
 }
 
 void beacon_upload() {
   lastUpload = millis();
-  if (Use_UPLOAD) upload_data(String(getBMPTempC()) + "," + String(int(getHum())) + "," + String(int(getPressure())) + "," + String(windActualSpeed) + "," + String(windLongPeriodSpeed) + "," + String(voltage) + "," + String(gust));
+  if (Use_UPLOAD) upload_data(String(getTempC()) + "," + String(int(getHum())) + "," + String(int(getPressure())) + "," + String(windActualSpeed) + "," + String(windLongPeriodSpeed) + "," + String(voltage) + "," + String(gust));
 }
 
 bool check_wifi() {
@@ -730,15 +998,79 @@ bool check_aprsis() {
     return false;
 }
 
-float getBMPTempC() {
-  if (BMPstatus)
-    return bmp.readTemperature() + BMP_OFFSET_TEMP;
+
+float getTempC()
+{
+  if (BM_sensor_status || AHTstatus )
+        
+    if (ch_term == 0 && BMPstatus ) return bmp.readTemperature()+drift_therm;  // use BMP280
+    if ( BMEstatus ) 
+      {
+      //sensors_event_t temp_event, pressure_event, humidity_event;
+      bme_temp->getEvent(&temp_event);
+      return temp_event.temperature;+drift_therm;  // use BME280
+      
+      }
+    if (ch_term == 1 )                                                                   // use AHT20  
+      {
+       
+        //sensors_event_t humidity_event, temp_event;
+        aht.getEvent(&humidity_event, &temp_event);
+        return temp_event.temperature+drift_therm;
+      }
+  
   else return 0;
 }
 
-String getBMPTempAPRS() {
-  if (BMPstatus) {
-  float fahrenheit = getBMPTempC();
+float getHum()
+  {
+    if (AHTstatus || BMEstatus)
+   
+        if(AHTstatus)
+          {
+            aht.getEvent(&humidity_event, &temp_event);
+            return humidity_event.relative_humidity;
+          }
+        if(BMEstatus) 
+          {
+            bme_humidity->getEvent(&humidity_event);
+            return humidity_event.relative_humidity;
+          }
+     
+    else return 0;
+  }
+
+
+
+float getPressure()
+  {
+    if (BM_sensor_status)
+
+    if(BMPstatus) return( (bmp.readPressure()           * ( pow(1.0 - (0.0065 * atoi(altitude) * -1 / (273.15 + getTempC() )), 5.255)) ) / 100 );
+    if(BMEstatus)
+      {
+        bme_pressure->getEvent(&pressure_event);
+                  return( ((pressure_event.pressure*100) * ( pow(1.0 - (0.0065 * atoi(altitude) * -1 / (273.15 + getTempC() )), 5.255)) ) / 100 );
+      }
+    
+    else return 0;
+  }
+
+  
+String getHumAPRS() {
+  if (AHTstatus == true || BMEstatus == true ) {
+    String sHum = String(int(getHum()));
+    return sHum;
+  } else {
+    return "..";
+  }
+}
+
+
+
+String getTempAPRS() {
+  if (BM_sensor_status) {
+  float fahrenheit = getTempC();
   fahrenheit *= 9;
   fahrenheit /= 5;
   int ifahrenheit = fahrenheit + 32;
@@ -750,20 +1082,9 @@ String getBMPTempAPRS() {
   } else return "000";
 }
 
-float getPressure() {
-  if (BMPstatus)
-    // return (bmp.readPressure() / 100) + BMP_OFFSET_PRESS;
-    {
-    return( (bmp.readPressure() * ( pow(1.0 - (0.0065 * atoi(METEO_ALTITUDE) * -1 / (273.15 + getBMPTempC() )), 5.255)) ) / 100 );
- 
-    }
-    //return ( bmp.readPressure() * ( pow(1.0 - (0.0065 * atoi(METEO_ALTITUDE) * -1 / (273.15 + getBMPTempC() )), 5.255)) ) / 100;
-  else
-    return 0;
-}
 
 String getPressureAPRS() {
-  if (BMPstatus) {
+  if (BM_sensor_status) {
   //float press = getPressure();
   //press *= 10;
   
@@ -780,31 +1101,6 @@ String getPressureAPRS() {
     return "00000";
   }
 }
-
-
-
-float getHum() {
-  if (AHTstatus)
-    {
-      sensors_event_t humidity_event, temp_event;
-      aht.getEvent(&humidity_event, &temp_event);
-      float Hum2 = humidity_event.relative_humidity;
-      return Hum2;
-    }
-  else
-    return 0;
-}
-
-String getHumAPRS() {
-  if (AHTstatus) {
-    String sHum = String(int(getHum()));
-    return sHum;
-  } else {
-    return "..";
-  }
-}
-
-
 
 
 void hall_change() {
@@ -829,6 +1125,7 @@ String windSpeedAPRS(float fSpeed) {
   }
 }
 
+
 void onWsEvent(AsyncWebSocket * server, AsyncWebSocketClient * client, AwsEventType type, void * arg, uint8_t *data, size_t len){
   if(type == WS_EVT_CONNECT){
     Serial.println("WS Con: " + String(ws.count()) + " connected.");
@@ -839,11 +1136,13 @@ void onWsEvent(AsyncWebSocket * server, AsyncWebSocketClient * client, AwsEventT
   }
 }
 
+
 void updateWebSocket() {
-  ws.textAll(tempToWeb(getBMPTempC()) + "," + HumToWeb(getHum()) + "," + pressToWeb(getPressure()) + "," + windToWeb(windActualSpeed) + "," + windToWeb(windKMH(windActualSpeed)) + "," + windToWeb(gust) + "," + windToWeb(windLongPeriodSpeed));
+  ws.textAll(tempToWeb(getTempC()) + "," + HumToWeb(getHum()) + "," + pressToWeb(getPressure()) + "," + windToWeb(windActualSpeed) + "," + windToWeb(windKMH(windActualSpeed)) + "," + windToWeb(gust) + "," + windToWeb(windLongPeriodSpeed));
   lastWSupdate = millis();
   //Serial.println("WS: Updated.");
 }
+
 
 String HTMLelementDef(String elementID) {
   return " var " + elementID + " = document.getElementById('" + elementID + "'); ";
@@ -861,17 +1160,17 @@ float windKMH(float windMS) {
 }
 
 String tempToWeb(float tempValue) {
-  if (BMPstatus) return String(tempValue,1);
+  if (BM_sensor_status) return String(tempValue,1);
   else return "N/A";
 }
 
 String HumToWeb(float HumValue) {
-  if (AHTstatus) return String(HumValue,1);
+  if (AHTstatus == true || BMEstatus == true ) return String(HumValue,1);
   else return "N/A";
 }
 
 String pressToWeb(float pressValue) {
-  if (BMPstatus) return String(pressValue,1);
+  if (BM_sensor_status) return String(pressValue,1);
   else return "N/A";
 }
 
@@ -959,9 +1258,867 @@ bool GETIndex(String header, String requestPath) {
     return false;
 }
 
-bool getBMPstatus() {
-  return BMPstatus;
+bool getBM_sensor_status() {
+  return BM_sensor_status;
 }
+
 bool getAHTstatus() {
   return AHTstatus;
 }
+
+bool getBMEstatus() {
+  return BMEstatus;
+}
+
+
+
+ /*
+  ---------------------------------------------------------------------------
+    FUNZIONE LETTURA DIGITAZIONI DA MENU 
+  ---------------------------------------------------------------------------
+  */
+  
+int readCharArray(char *tmp_buffer)
+{
+  char car;
+  sep=0;
+  ptr=0;
+  do
+    {
+      if (Serial.available() > 0)
+        {
+          car = Serial.read();
+          
+          if ( carMenu == 'c'  )       // per il menu 1 converti in maiuscolo
+            {  
+              if ( car >= 97 && car <= 122 ) car = car-32;  // converti da minuscolo a maiuscolo
+            }
+          
+          if (car != '\n')
+            {
+              if ( carMenu == '2' || carMenu == '6' )
+                {
+                  if ( car != ' ' )  // lat lon vengono eliminati tutti gli spazi
+                    {
+                      tmp_buffer[ptr++] = car;
+                      if (car == ',') sep=ptr-1;    // posizione del separatore lat/lon
+                    } 
+                }    
+              else tmp_buffer[ptr++] = car;       
+             }
+          }    
+      }
+  while (car != '\n');
+  
+  tmp_buffer[ptr] = 0;
+  // return the number of char read
+  return ptr;
+  return sep;
+}
+
+
+
+  /*
+  ---------------------------------------------------------------------------
+    LETTURA CARATTERE SCELTA MENU 
+  ---------------------------------------------------------------------------
+  */
+
+char readCarMenu()
+{
+  //char car = 0;
+  char ret = 0;
+  ret = 0;
+  while (car != '\n')
+    {
+      if (Serial.available() > 0)
+        {
+          car = Serial.read();
+          if ((car >= 48) && (car <= 57) || (car >= 97) && (tmp <= 122) ) ret = car;
+        }
+    }
+  car=0;
+  return ret;
+}
+
+
+
+
+ /*
+  ---------------------------------------------------------------------------
+    MENU 
+  ---------------------------------------------------------------------------
+  */
+ void menu()
+
+{
+  do
+    {
+      carMenu = 0;
+      righello();
+      Serial.println(F("\n.. CONFIG MENU ..\n"));
+      righello();
+      Serial.println(F("(c) callsign"));
+      righello();
+      Serial.println(F("(1) meteo ssid"));
+      Serial.println(F("(2) meteo lat/long"));
+      Serial.println(F("(a) meteo altitude"));
+      if ( AHTstatus == true ) Serial.println(F("(u) meteo use thermometer"));
+      Serial.println(F("(3) meteo drift thermal sensor"));
+      Serial.println(F("(4) meteo info"));
+      Serial.println(F("(t) meteo beacon tx interval"));
+      Serial.println(F("(m) meteo APRS-IS switch"));
+      righello();
+      Serial.println(F("(5) iGate ssid"));
+      Serial.println(F("(6) iGate lat/long"));
+      Serial.println(F("(i) iGate APRS-IS switch"));
+      Serial.println(F("(d) digipeater switch"));
+      //Serial.println(F("(6) igate info"));
+      righello();
+           
+      Serial.println(F("(f) LoRa frequency"));
+      Serial.println(F("(p) LoRa power"));
+      Serial.println(F("(w) Wifi ssid"));
+      Serial.println(F("(7) Wifi password"));
+      Serial.println(F("(8) APRS passcode"));
+      Serial.println(F("(9) APRS server"));
+      
+      Serial.println(F("(0) EXIT"));
+      righello();
+    
+      carMenu = readCarMenu();
+      switch (carMenu)
+        {
+          case '0' :
+           status_display();
+           break;
+
+          case 'c' :
+            Serial.print(F("callsign - ex IZ1XYZ"));
+            readCharArray(call);
+         
+            EEPROM_writer(6,ptr,call);
+            EEPROM_eraser(6+ptr,11);
+
+            Serial.print(F(" = "));
+            Serial.println(call);
+            break;
+
+
+            case 'd' :
+            Serial.print(F("0=disabled | 1=enabled - ex: 1"));
+            readCharArray(tmp_buffer);
+            if (atoi(tmp_buffer) > 0 ) digiSwitch = true;
+            else digiSwitch = false;
+            Serial.print(F(" = "));
+            Serial.print(tmp_buffer);
+            if ( digiSwitch == false ) Serial.println(F(" = DISABLED"));
+            if ( digiSwitch == true ) Serial.println(F(" = ENABLED"));
+            EEPROM.write(167, atoi(tmp_buffer));
+            EEPROM.commit();
+           break; 
+          
+          
+          case 'i' :
+            Serial.print(F("0=disabled | 1=enabled - ex: 1"));
+            readCharArray(tmp_buffer);
+            if (atoi(tmp_buffer) > 0 ) aprsSwitch = true;
+            else aprsSwitch = false;
+            Serial.print(F(" = "));
+            Serial.print(tmp_buffer);
+            if ( aprsSwitch == false ) Serial.println(F(" = DISABLED"));
+            if ( aprsSwitch == true ) Serial.println(F(" = ENABLED"));
+            EEPROM.write(166, atoi(tmp_buffer));
+            EEPROM.commit();
+           break;  
+          
+          
+            case 'm' :
+            Serial.print(F("0=disabled | 1=enabled - ex: 1"));
+            readCharArray(tmp_buffer);
+            if (atoi(tmp_buffer) > 0 )meteoSwitch = true;
+            else meteoSwitch = false;
+            Serial.print(F(" = "));
+            Serial.print(tmp_buffer);
+            if ( meteoSwitch == false ) Serial.println(F(" = DISABLED"));
+            if ( meteoSwitch == true ) Serial.println(F(" = ENABLED"));
+            EEPROM.write(165, atoi(tmp_buffer));
+            EEPROM.commit();
+           break;  
+           
+
+          case 'u' :
+            if ( AHTstatus == false ) break;
+            Serial.print(F("0=use BMP280 | 1=use AHT20 - ex: 0"));
+            readCharArray(tmp_buffer);
+            ch_term = atoi(tmp_buffer);
+            verifica_parametri();
+            Serial.print(F(" = "));
+            Serial.print(ch_term);
+            if ( ch_term == 0 ) Serial.println(F(" = BMP280"));
+            if ( ch_term == 1 ) Serial.println(F(" = AHT20"));
+            EEPROM.write(52, ch_term);
+            EEPROM.commit();
+           break;          
+          
+ 
+          case '1' :
+            Serial.print(F("meteo ssid - ex: 3"));
+            readCharArray(tmp_buffer);
+            meteo_ssiD = atoi(tmp_buffer);
+            verifica_parametri();
+            Serial.print(F(" = "));
+            Serial.println(meteo_ssiD);
+            EEPROM.write(12, meteo_ssiD);
+            EEPROM.commit();
+           break;  
+
+
+          case '5' :
+            Serial.print(F("igate ssid - ex: 10"));
+            readCharArray(tmp_buffer);
+            igate_ssiD = atoi(tmp_buffer);
+            verifica_parametri();
+            Serial.print(F(" = "));
+            Serial.println(igate_ssiD);
+            EEPROM.write(13, igate_ssiD);
+            EEPROM.commit();
+           break;   
+  
+
+          case '2' :
+            Serial.print(F("lat,long meteo - ex: 78.7562,18.5162"));
+            readCharArray(tmp_buffer);
+        
+            if ( ptr > 22 || sep == 0)
+              {
+                Serial.print(F(" .. error .. \n"));
+                break;
+              }            
+
+            array_eraser(0,9,lat_meteo);
+            array_eraser(0,10,lon_meteo);
+            EEPROM_eraser(14,34);
+
+            tmp=14;
+            while (tmp != 14+sep) // -- salva lat meteo
+              {
+                  EEPROM.write( tmp, tmp_buffer[tmp-14] ); // si scrive a partire dalla cella 13 fino alla 22
+                  EEPROM.commit();
+                  delay(30);
+                  lat_meteo[tmp-14]=tmp_buffer[tmp-14];
+                  tmp++;
+              } 
+
+            tmp=24;
+            while (tmp != 24+ptr-sep-1) // -- salva lon meteo
+              {
+                  EEPROM.write( tmp, tmp_buffer[tmp-24+sep+1] ); // si scrive a partire dalla cella 23 fino alla 33
+                  EEPROM.commit();
+                  delay(30);
+                  lon_meteo[tmp-24]=tmp_buffer[tmp-24+sep+1];
+                  tmp++;
+              } 
+       
+            Serial.print(F(" = "));
+            Serial.print(atof(lat_meteo),6);
+            Serial.print(F(","));
+            Serial.println(atof(lon_meteo),6);
+            verifica_parametri();         // calcola in notazione APRS
+            break; 
+            
+
+           case '6' :
+            Serial.print(F("lat,long igate - ex: 78.7562,18.5162"));
+            readCharArray(tmp_buffer);
+        
+            if ( ptr > 22 || sep == 0)
+              {
+                Serial.println(F(" .. error .. \n"));
+                break;
+              }            
+
+            array_eraser(0,9,lat_igate);
+            array_eraser(0,10,lon_igate);
+            EEPROM_eraser(230,250);
+
+            tmp=230;
+            while (tmp != 230+sep) // -- salva lat igate
+              {
+                  EEPROM.write( tmp, tmp_buffer[tmp-230] ); // si scrive a partire dalla cella 230 fino alla 239
+                  EEPROM.commit();
+                  delay(30);
+                  lat_igate[tmp-230]=tmp_buffer[tmp-230];
+                  tmp++;
+              } 
+           
+            tmp=240;
+            while (tmp != 240+ptr-sep-1) // -- salva lon igate
+              {
+                  EEPROM.write( tmp, tmp_buffer[tmp-240+sep+1] ); // si scrive a partire dalla cella 240 fino alla 250
+                  EEPROM.commit();
+                  delay(30);
+                  lon_igate[tmp-240]=tmp_buffer[tmp-240+sep+1];
+                  tmp++;
+              }           
+                             
+            Serial.print(F(" = "));
+            Serial.print(atof(lat_igate),6);
+            Serial.print(F(","));
+            Serial.println(atof(lon_igate),6);
+            verifica_parametri();         // calcola in notazione APRS
+
+            break;
+      
+          
+          case 'a' :
+            Serial.print(F("altitude - ex: 445"));
+            readCharArray(altitude);
+            if (ptr > 4) ptr = 4;
+            EEPROM_writer(35,ptr,altitude);
+            EEPROM_eraser(35+ptr,38);
+            Serial.print(F(" = "));
+            Serial.println(altitude);
+            break;
+
+
+            case 'w' :
+            Serial.print(F("WiFi ssiD [ max 20 char ]"));
+            readCharArray(WiFi_ssiD);
+            if ( ptr>20 ) ptr=20; 
+            EEPROM_writer(170,ptr,WiFi_ssiD);
+            EEPROM.write( 170+ptr, 254 );   // aggiungo flag di fine testo
+            EEPROM.commit();
+            Serial.print(F(" = "));
+            Serial.println(WiFi_ssiD);
+            break;
+
+
+            case '7' :
+            Serial.print(F("WiFi password [ max 20 char ]"));
+            readCharArray(WiFi_pwd);
+            if (ptr>20 ) ptr=20;
+            EEPROM_writer(190,ptr,WiFi_pwd);
+            EEPROM.write( 190+ptr, 254 );   // aggiungo flag di fine testo
+            EEPROM.commit();
+            Serial.print(F(" = "));
+            Serial.println(WiFi_pwd);
+            break;
+
+
+            case '8' :
+            Serial.print(F("APRS passcode - ex: 19617"));
+            readCharArray(aprs_passcode);
+            EEPROM_writer(53,53+4,aprs_passcode);
+            Serial.print(F(" = "));
+            Serial.println(aprs_passcode);
+            break;
+
+
+            case '9' :
+            Serial.print(F("APRS server - ex: rotate.aprs2.net"));
+            readCharArray(aprs_server);
+            if (ptr>20 ) ptr=20;
+            EEPROM_writer(210,ptr,aprs_server);
+            EEPROM.write( 210+ptr, 254 );   // aggiungo flag di fine testo
+            EEPROM.commit();
+            Serial.print(F(" = "));
+            Serial.println(aprs_server);
+            APRSISServer = String(aprs_server);
+            break;
+
+        
+          case '4' :
+            Serial.print(F("meteo info - ex: .. WXmeteo LoRa tech .."));
+            readCharArray(meteo_info);
+            if (ptr>50 ) ptr=50;
+            EEPROM_writer(60,ptr,meteo_info);
+            EEPROM.write( 60+ptr, 254 );   // aggiungo flag di fine testo
+            EEPROM.commit();
+            Serial.print(F(" = "));
+            Serial.println(meteo_info);
+            break;
+
+          /*
+          case 'x' :
+            Serial.print(F("igate info - ex: .. iGate LoRa tech .."));
+            readCharArray(igate_info);
+            if (ptr>50 ) ptr=50;
+            EEPROM_writer(112,ptr,igate_info);
+            EEPROM.write( 112+ptr, 254 );   // aggiungo flag di fine testo
+            EEPROM.commit();
+            Serial.print(F(" = "));
+            Serial.println(igate_info);
+            break;
+          */
+
+          case 'f' :
+            Serial.print(F("frequency - ex: 433775"));
+            readCharArray(frequencyC);
+            if (ptr>6) ptr=6;
+            EEPROM_writer(41,ptr,frequencyC);
+            Serial.print(F(" = "));  
+            Serial.println(frequencyC);
+            break;
+
+          case '3' :
+            Serial.print(F("Thermal drift (max +/- 5) | ex: -0.25"));
+            readCharArray(drift_thermC);
+            if (atof(drift_thermC) >5 || atof(drift_thermC) < -5 )
+              {
+                Serial.println(F(" = ERROR"));
+                break;
+              }
+            EEPROM_eraser(47,51);       // cancello dalla 47 alla 51
+            if (ptr>5 ) ptr=5;
+            EEPROM_writer(47,ptr,drift_thermC);
+            Serial.print(F(" = "));
+            drift_therm = atof(drift_thermC);  
+            Serial.println(drift_therm, 2);   
+            break;
+
+
+          case 'p' :
+            Serial.print(F("power 2-17 dBm - ex: 17"));
+            readCharArray(tmp_buffer);
+            LoRa_power = atoi(tmp_buffer);
+            verifica_parametri();
+            Serial.print(F(" = "));
+            Serial.println(LoRa_power);
+            EEPROM.write(38, LoRa_power);
+            EEPROM.commit();
+            break;
+
+
+          case 't' :
+            Serial.print(F("tx interval minutes - ex: 10"));
+            readCharArray(tmp_buffer);
+            tx_interval = atoi(tmp_buffer);
+            verifica_parametri();
+            Serial.print(F(" = "));
+            Serial.println(tx_interval);
+            EEPROM.write(40, tx_interval);
+            EEPROM.commit();
+            break;
+         
+         }        
+  } while (carMenu != '0' );
+  Serial.println();
+}
+
+ /*
+  ---------------------------------------------------------------------------
+    RIGHELLO 
+  ---------------------------------------------------------------------------
+  */
+
+void righello()
+{
+  tmp=0;
+  while (tmp != 60)
+    {
+      Serial.print(F("- "));
+      tmp++;  
+    }
+    Serial.println(F("-"));
+    tmp=0;
+}
+
+void banner()
+  {
+    Serial.print(F("\n.. "));
+    Serial.print(F(Project));
+    Serial.print(F(" "));
+    Serial.print(F(Release));
+    Serial.print(F(" - built "));
+    Serial.println(F(Build));
+    Serial.println(F("   based on OK2DDS' project modified by IW1CGW..\n"));
+  }
+
+ /*
+  ---------------------------------------------------------------------------
+    STATUS SERIAL DISPLAY 
+  ---------------------------------------------------------------------------
+  */
+
+void status_display()
+  {
+    righello();
+    banner();
+    righello();
+
+    Serial.print(F("meteo call: "));
+    Serial.print(call);
+    Serial.print(F("-"));
+    Serial.println(meteo_ssiD);
+    
+    Serial.print(F("meteo lat,long: "));
+    Serial.print(atof(lat_meteo),6);
+    Serial.print(F(" , "));
+    Serial.println(atof(lon_meteo),6);
+    
+    Serial.print(F("meteo info: "));
+    Serial.println(meteo_info);
+    /*
+    Serial.print(F(" - "));
+    Serial.print(lat_meteo_APRS);
+    Serial.print(F("/"));
+    Serial.println(lon_meteo_APRS);
+    */
+    Serial.print(F("meteo station altitude: ")); Serial.print(atoi(altitude));Serial.println(F(" m"));
+        if ( AHTstatus == true )
+      {
+        Serial.print(F("thermometer in use: "));
+        if (ch_term == 0 ) Serial.println(F("BMP280"));
+        if (ch_term == 1 ) Serial.println(F("AHT20"));
+       }
+    Serial.print(F("thermal drift: ")); Serial.print(drift_therm);  Serial.println(F(" Celsius"));
+    Serial.print(F("meteo beacon tx interval: ")); Serial.print(tx_interval); Serial.println(F(" minutes"));
+    Serial.print(F("meteo APRS-IS: "));
+    if (meteoSwitch) Serial.println(F("enabled"));
+    else Serial.println(F("disabled"));
+    righello();
+    
+    Serial.print(F("iGate call: "));
+    Serial.print(call);
+    Serial.print(F("-"));
+    Serial.println(igate_ssiD);
+
+    Serial.print(F("iGate lat,long: "));
+    Serial.print(atof(lat_igate),6);
+    Serial.print(F(" , "));
+    Serial.println(atof(lon_igate),6);
+
+    Serial.print(F("iGate APRS-IS; "));
+    if (aprsSwitch ) Serial.println(F("enabled"));
+    else Serial.println(F("disabled"));
+
+    Serial.print(F("digipeater: "));
+    if (digiSwitch ) Serial.println(F("enabled"));
+    else Serial.println(F("disabled"));
+
+    /*
+    Serial.print(F(" - "));
+    Serial.print(lat_igate_APRS);
+    Serial.print(F("/"));
+    Serial.println(lon_igate_APRS);
+    */
+    //Serial.print(F("iGate info: ")); Serial.println(igate_info);
+    
+    righello();
+    Serial.print(F("LoRa frequency: ")); Serial.print(frequencyC); Serial.println(F(" KHz"));
+    Serial.print(F("LoRa power: ")); Serial.print(LoRa_power); Serial.println(F(" dBm"));
+    Serial.print(F("Wifi ssid: ")); Serial.println(WiFi_ssiD);
+    Serial.print(F("Wifi password: "));  Serial.println(WiFi_pwd);
+    Serial.print(F("APRS passcode for ")); Serial.print(call); Serial.print(F(": "));Serial.println(aprs_passcode);
+    Serial.print(F("APRS server : ")); Serial.println(aprs_server);
+
+    righello();
+    Serial.println(F(bottom));
+
+  }
+
+  
+
+  /*
+  ---------------------------------------------------------------------------
+    CARICAMENTO PARAMETRI
+  ---------------------------------------------------------------------------
+  */
+
+void load_param()
+  {
+    /* ---------------------- determina se occorre factory reset 
+      il primi 6 caratteri della EEPROM si attendono il dato della Build
+      se non coincide cosa si legge in EEPROM viene avviata la routine di factory reset
+    */ 
+
+    boolean verify = LOW;
+    tmp=0;
+    while ( tmp != 6  )       // leggi dalla cella 0 fino alla cella 6 
+      {
+        car = EEPROM.read(tmp);
+        if (car != Build[tmp] ) verify = true; // verificare da scansione se Build e build_mark sono uguali
+        tmp++;
+      }
+
+    if ( verify == true )
+      {
+        Serial.println(F("initial reset required  - please wait")); 
+        initial_reset();        // carica valori di default nella EEPROM
+      }
+ 
+    EEPROM_loader(6,11,call);
+    meteo_ssiD = EEPROM.read( 12 );         
+    igate_ssiD = EEPROM.read( 13 );         
+    EEPROM_loader(14,23,lat_meteo);
+    EEPROM_loader(24,34,lon_meteo);
+    EEPROM_loader(35,38,altitude);
+    LoRa_power = EEPROM.read( 39 ); 
+    tx_interval = EEPROM.read( 40 ); 
+    EEPROM_loader(41,46,frequencyC);
+    EEPROM_loader(47,51,drift_thermC);
+    ch_term = EEPROM.read( 52 ); 
+    EEPROM_loader(53,57,aprs_passcode);
+    
+    if (EEPROM.read( 165 ) > 0 ) meteoSwitch = true;  // USE_METEO
+    else meteoSwitch = false;
+    
+    if (EEPROM.read( 166 ) > 0 ) aprsSwitch = true;   // Use_IGATE
+    else aprsSwitch = false;
+    
+    if (EEPROM.read( 167 ) > 0 ) digiSwitch = true;   // USE_DIGIPEATER
+    else digiSwitch  = false;
+
+    EEPROM_loader(60,111,meteo_info);
+    //EEPROM_loader(112,163,igate_info);
+
+    EEPROM_loader(170,189,WiFi_ssiD);
+    EEPROM_loader(190,209,WiFi_pwd);
+    EEPROM_loader(210,229,aprs_server);
+    EEPROM_loader(230,239,lat_igate);
+    EEPROM_loader(240,250,lon_igate);
+    verifica_parametri();
+  }
+
+
+  /*
+  ---------------------------------------------------------------------------
+    RESET INIZIALE
+  ---------------------------------------------------------------------------
+  */
+
+void initial_reset()
+  {
+    
+    EEPROM_eraser(0,250);
+    Serial.println(F("EEPROM erased - please wait"));
+
+    EEPROM_writer(0, 5,Build);   
+    char buff0[10]="N0CALL"; 
+    EEPROM_writer(6, 11,buff0);
+    char buff1[10]="25"; 
+    EEPROM_writer(35, 38,buff1);
+
+    EEPROM_writer(41, 46,frequencyC);       // frequenza dalla cella 41 fino alla 46
+    char buff2[6]="12345"; 
+    EEPROM_writer(53, 57,buff2);
+    EEPROM_writer(53, 57,buff2);
+    char buff3[24]=".. WXmeteo LoRa tech .."; 
+
+
+    EEPROM_writer(60, 111,buff3);
+    EEPROM_writer(112, 163,buff3);
+    EEPROM_writer(170, 189,buff2);
+    EEPROM_writer(190, 209,buff2);
+    EEPROM_writer(210, 229,buff2);
+
+    EEPROM.write(12, 3);
+    EEPROM.write(13, 10);   
+    EEPROM.write(39, 2);
+    EEPROM.write(40, 10);
+    EEPROM.write(165, 1);// switch meteo
+    EEPROM.write(166, 1);// switch igate
+    EEPROM.write(167, 1);// switch digi
+
+    EEPROM.commit();
+
+   Serial.println(F("initial reset executed  - please wait")); 
+    
+}
+
+
+  /*
+  ---------------------------------------------------------------------------
+    VERIFICA PARAMETRI
+  ---------------------------------------------------------------------------
+  */
+
+void verifica_parametri()
+  {
+    tmp=0;
+    
+    if (meteo_ssiD >15)   meteo_ssiD = 3;
+    if (meteo_ssiD <1)    meteo_ssiD = 3;
+    if (igate_ssiD >15)   igate_ssiD = 10;
+    if (igate_ssiD <1)    igate_ssiD = 10;
+    if (LoRa_power <2 )   LoRa_power = 2;
+    if (LoRa_power >17 )  LoRa_power = 17;
+    if (tx_interval <1 )  tx_interval = 10;
+    if (tx_interval >20 ) tx_interval = 20;
+    
+    //hum_lect = time_data_period/(tx_interval*60000);
+    //Serial.print("hum_lect: ");
+    //Serial.println(hum_lect);
+
+    drift_therm=atof(drift_thermC);
+    if ( drift_therm > 5 ) drift_therm = 0;
+    if ( drift_therm < -5 ) drift_therm = 0;
+
+    if ( ch_term >1 ) ch_term = 0;
+    if ( AHTstatus == false ) ch_term = 0;
+
+    if ( atoi(lon_igate) >90 || atoi(lat_igate) >180 ) 
+      {
+        array_eraser(0,9,lat_igate);
+        array_eraser(0,10,lon_igate);
+        Serial.print(F("\n .. error lat/lon igate .. \n"));
+      } 
+  
+   if ( atoi(lon_meteo) >90 || atoi(lat_meteo) >180 ) 
+      {
+        array_eraser(0,9,lat_meteo);
+        array_eraser(0,10,lon_meteo);
+        Serial.print(F("\n .. error lat/lon meteo .. \n"));
+      } 
+  
+    METEO_CALLSIGN = String(call)+String("-")+String(meteo_ssiD);
+    IGATE_CALLSIGN = String(call)+String("-")+String(igate_ssiD); 
+    APRSISServer = String(aprs_server);
+    APRS_LatLon();
+
+  }
+
+
+void APRS_LatLon()
+ {
+  //-----------------------------------------------
+  if (lat_meteo[0] == '-' ) lat_meteo[0] = ' ' ;
+  int gradi=atoi(lat_meteo);
+  double minuti=(atof(lat_meteo)-gradi)*60;
+  double secondi = (minuti-int(minuti))*100;
+  float centesimi = (secondi-int(secondi))*100;
+  if (centesimi > 50 ) secondi = secondi+1;
+  if (lat_meteo[0] == ' ' ) lat_meteo[0] = '-' ;  
+
+  sprintf(lat_meteo_APRS, "%02d%02d.%02dN",(gradi),(int(minuti)),(int(secondi)));    
+  if (lat_meteo[0] == '-' ) sprintf(lat_meteo_APRS, "%02d%02d.%02dS",(gradi),(int(minuti)),(int(secondi)));  
+  //-----------------------------------------------
+  
+  //-----------------------------------------------
+  if (lon_meteo[0] == '-' ) lon_meteo[0] = ' ' ;
+  gradi=atoi(lon_meteo);
+  minuti=(atof(lon_meteo)-gradi)*60;
+  secondi = (minuti-int(minuti))*100;
+  centesimi = (secondi-int(secondi))*100;
+  if (centesimi > 50 ) secondi = secondi+1;
+  if (lon_meteo[0] == ' ' ) lon_meteo[0] = '-' ; 
+  sprintf(lon_meteo_APRS, "%03d%02d.%02dE",(gradi),(int(minuti)),(int(secondi)));  
+  if (lon_meteo[0] == '-' ) sprintf(lon_meteo_APRS, "%03d%02d.%02dW",(gradi),(int(minuti)),(int(secondi)));  
+  //-----------------------------------------------
+
+  //-----------------------------------------------
+    if (lat_igate[0] == '-' ) lat_igate[0] = ' ' ;
+    gradi=atoi(lat_igate);
+    minuti=(atof(lat_igate)-gradi)*60;
+    secondi = (minuti-int(minuti))*100;
+    centesimi = (secondi-int(secondi))*100;
+    if (centesimi > 50 ) secondi = secondi+1;
+    if (lat_igate[0] == ' ' ) lat_igate[0] = '-' ;  
+
+    sprintf(lat_igate_APRS, "%02d%02d.%02dN",(gradi),(int(minuti)),(int(secondi)));    
+    if (lat_igate[0] == '-' ) sprintf(lat_igate_APRS, "%02d%02d.%02dS",(gradi),(int(minuti)),(int(secondi)));  
+    //-----------------------------------------------
+    
+    //-----------------------------------------------
+    if (lon_igate[0] == '-' ) lon_igate[0] = ' ' ;
+    gradi=atoi(lon_igate);
+    minuti=(atof(lon_igate)-gradi)*60;
+    secondi = (minuti-int(minuti))*100;
+    centesimi = (secondi-int(secondi))*100;
+    if (centesimi > 50 ) secondi = secondi+1;
+    if (lon_igate[0] == ' ' ) lon_igate[0] = '-' ; 
+    sprintf(lon_igate_APRS, "%03d%02d.%02dE",(gradi),(int(minuti)),(int(secondi)));  
+    if (lon_igate[0] == '-' ) sprintf(lon_igate_APRS, "%03d%02d.%02dW",(gradi),(int(minuti)),(int(secondi)));  
+    //-----------------------------------------------
+
+ }
+
+
+void array_eraser(byte start , byte stop , char tmp_data[50])
+{
+  while (start <= stop) // -- cancella array lat/lon igate
+    {
+      tmp_data[start] = ' '; 
+      start++;
+    }
+}
+
+
+void EEPROM_eraser(byte start,byte stop)
+  {
+    while (start <= stop) // -- cancella EEPROM 
+      {
+        EEPROM.write( start, ' ' ); 
+        start++;
+      }
+    EEPROM.commit(); 
+  }
+
+
+void EEPROM_writer(byte start, byte stop,char tmp_data[50])
+  {
+    tmp=0;
+    while (tmp+start <= start+stop) // -- scrivi EEPROM 
+      {
+        EEPROM.write( start+tmp, tmp_data[tmp] ); 
+        tmp++;
+      }
+    EEPROM.commit(); 
+  }
+
+
+ void EEPROM_loader(byte start, byte stop,char tmp_data[50])
+  {
+    tmp=0;
+    while ( tmp+start <= stop )       
+      {
+        car = EEPROM.read(tmp+start);
+        if ( car == 254 ) return; 
+        tmp_data[tmp] = car;
+        tmp++;
+      }
+        
+  }
+
+
+
+ /*
+  ---------------------------------------------------------------------------
+    EEPROM MAP
+  ---------------------------------------------------------------------------
+
+
+  byte of the EEPROM can only hold a
+  value from 0 to 255.
+ 
+  
+0 - 5   // Build:230405 | 6
+6 - 11  // call: IZ1GZA | 6
+12 - 12 // meteo_iD: 13 | 1  
+13 - 13 // igate_iD: 13 | 1  
+14 - 23 // latitude meteo | 10 caratteri
+24 - 34 // longitudine meteo 11 caratteri 
+35 - 38 // altitude - 1000 | 4
+39 - 39 // set power: 2-17 | 1
+40 - 40 // set tx_interval 1-20 | 10
+41 - 46 // frequenza | 6 caratteri ex: 433775
+47 - 51 // drift termometro | 5 caratteri
+52 - 52 // scelta termometro [ solo per BMP280+AHT20: 0= temp BMP280 | 1= temp AHT20
+53 - 57 // aprs passcode
+
+60 - 111 // info meteo: .. WXmeteo Alma Frabosa - 650m .. | 50 caratteri + flag fine testo - carattere cella 111 -
+112 - 163 // info igate: .. WXmeteo Alma Frabosa - 650m .. | 50 caratteri + flag fine testo - carattere cella 163 -
+
+165 - 165 // switch meteo [meteoSwitch]
+166 - 166 / /switch igate [aprsSwitch]
+167 - 167 // switch digipeater [digiSWitch]
+
+170 - 189 // WiFi ssiD
+190 - 209 // WiFi password
+210 - 229 // Aprs_server
+
+230 - 239 // latitude igate | 10 caratteri
+240 - 250 // longitudine igate |11 caratteri 
+
+ */
