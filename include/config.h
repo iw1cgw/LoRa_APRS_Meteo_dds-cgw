@@ -1,21 +1,26 @@
 // GENERAL SETTINGS
 
+#define Project "LoRa_APRS_Igate+Meteo"
+#define Release "1.01"
+char Build[7] = "230731";
+#define DESTCALL "APLGM4"
 #define Use_WiFi true                   // enable Wi-Fi connection and HTTP web server
-const char* ssid = "xxxxx-wl";              // WiFi SSID
-const char* password = "0123456789";		// WiFi Password
 #define Hostname "LORAMETEO"         // Hostname, name of computer visible in the network
 
 // METEO SERVICE SETTINGS
 
-#define USE_METEO true                 // beacon meteo packets and store values for graphs
-#define METEO_CALLSIGN "NOCALL-3"
-#define METEO_BEACON 10
-#define METEO_LAT "0000.00N"
-#define METEO_LON "00000.00E"
-#define METEO_ALTITUDE "650"
-#define METEO_COMMENT "LoRa IGate&Meteo"
+
+// --- i comment sulle stringhe senza georeferenziazione --- //
+// per iGate viene indicato il valore dell'ultimo aascolto
+// per meteo viene indicato il banner di GitHub
+#define METEO_STATUS "https://github.com/iw1cgw/LoRa_APRS_Meteo_dds-cgw"  
+//#define METEO_STATUS "LoRa Meteo based by OK2DDS project"
+
+#define igate_info "https://github.com/iw1cgw/LoRa_APRS_Meteo_dds-cgw"
+
 #define USE_METEO_STATUS true           // send status below in timeout of igate packet (needs wifi, igate on and aprs-is)
-#define METEO_STATUS "LoRa Meteo based by OK2DDS project"
+#define METEO_STATUS_SEND_INTERVAL 10   // [ cgw ] send beacon meteo status after nr. xx beacon meteo
+
 #define GRAPH_LIMIT 144                   // how many values to store for graphs (too high can cause errors)
 
 #define USE_ANEMOMETER false                     // turn on/off wind meter
@@ -27,24 +32,10 @@ const char* password = "0123456789";		// WiFi Password
 #define ANEMO_RECALC_LIMIT_TIMEOUT 900  // auto update long-period speed after x seconds (should be METEO_BEACON * 60)
 #define ANEMO_RECALC_ACTUAL_SPEED 4    // set actual wind speed to 0 if anemometer is not spinning for x seconds
 
-#define BMP_OFFSET_TEMP -1          // calibrate your BMP sensor (these values will be added to values measured by BMP for calibration)
-#define BMP_OFFSET_PRESS 28
-
-// IGATE SERVICE SETTINGS
-
-#define Use_IGATE true              // send received packets to APRS-IS, needs Wi-Fi turned on
-                                    // Igate can be turned off with /switch-aprs, but can not be turned on if it's disabled by this
-#define IGATE_BEACON 10
 #define IGATE_BCN_NETWORK true              // if true, will send igate beacon via aprs-is, if false will send via LoRa
-#define IGATE_LAT "0000.00N"
-#define IGATE_LON "00000.00E"
-#define IGATE_COMMENT "LoRa IGate based by OK2DDS project"
-#define IGATE_CALLSIGN "NOCALL-10"
-#define APRS_IS_Server "rotate.aprs2.net"    // APRS-IS server for igate
-#define APRS_IS_Port 14580                  // server port, keep default (14580)
-#define APRS_IS_Password 00000              // Your APRS-IS password
 
-#define USE_DIGIPEATER false                 // allow digipeating of packets
+#define APRS_IS_Port 14580                  // server port, keep default (14580)
+
 #define USE_LASTRX_STATUS true              // display Last RX status on igate
 
 // HTTP GET DATA UPLOAD SERVICE SETTINGS (experimental, for development)
@@ -56,9 +47,6 @@ const char* password = "0123456789";		// WiFi Password
 // LORA MODULE SETTINGS (keep default unless experimental setup)
 
 #define SERIAL_BAUD 9600                           // serial baud
-
-#define LoRa_Frequency 433775E3                    // Frequency (433775000 Hz)
-#define LoRa_TxPower 20                            // TX power (max 20 dBm)
 
 #define LoRa_SCK 5
 #define LoRa_MISO 19

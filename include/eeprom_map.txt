@@ -1,0 +1,39 @@
+ /*
+  ---------------------------------------------------------------------------
+    EEPROM MAP
+  ---------------------------------------------------------------------------
+
+
+  byte of the EEPROM can only hold a
+  value from 0 to 255.
+ 
+  
+0 - 5   // build:230405 | 6
+6 - 11  // call: IZ1GZA | 6
+12 - 12 // meteo_iD: 13 | 1  
+13 - 13 // igate_iD: 13 | 1  
+14 - 23 // latitude meteo | 10 caratteri
+24 - 34 // longitudine meteo 11 caratteri 
+35 - 38 // altitude - 1000 | 4
+39 - 39 // set power: 2-17 | 1
+40 - 40 // set tx_interval 1-20 | 10
+41 - 46 // frequenza | 6 caratteri ex: 433775
+47 - 51 // drift termometro | 5 caratteri
+52 - 52 // scelta termometro [ solo per BMP280+AHT20: 0= temp BMP280 | 1= temp AHT20
+53 - 57 // aprs passcode
+
+60 - 111 // info meteo: .. WXmeteo Alma Frabosa - 650m .. | 50 caratteri + flag fine testo - carattere cella 111 -
+112 - 163 // info igate: .. WXmeteo Alma Frabosa - 650m .. | 50 caratteri + flag fine testo - carattere cella 163 -
+
+165 - 165 // switch meteo [meteoSwitch]
+166 - 166 / /switch igate [aprsSwitch]
+167 - 167 // switch digipeater [digiSWitch]
+
+170 - 189 // WiFi ssiD
+190 - 209 // WiFi password
+210 - 229 // Aprs_server
+
+230 - 239 // latitude igate | 10 caratteri
+240 - 250 // longitudine igate |11 caratteri 
+
+ */
