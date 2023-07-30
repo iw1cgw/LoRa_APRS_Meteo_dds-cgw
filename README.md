@@ -1,6 +1,6 @@
 # LoRa_APRS_Meteo
 LoRa APRS Meteostation, IGate and Digipeater firmware for TTGO LoRa32 V2.1 
-this is a personal evolution of the original OZ2DDS project<br><br>
+this is a personal evolution of the original OK2DDS project<br><br>
 Features: measures temperature, pressure (with BMP280 or BME280) and humidity (with BME280 or integrated module AHT20+BMP280).
 Sensors are automatically recognized without setup.
 <br>
@@ -28,7 +28,7 @@ Source code is in src/main.cpp, before running your station please check:<br>
 <br><br>
 If you need help or have any questions or suggestions fot this realise, please reach:iw1cgw(at)libero.it
 
-For running the temperature/pressure measurement, you will need to use BMP280+AHT20 pr BMP280 or BME280 sensor.
+For running the temperature/pressure measurement, you will need to use BMP280+AHT20 or BMP280 or BME280 sensor, sensors are automatically recognized without setup.
 Please solder VCC to 3.3V pin, GND to GND, SCL to IO22 and SDA to IO21.<br>
 
 The BMP280/BME280 pressure sensor does not require calibration, but the height in meters of the weather station must be set correctly from the menu to obtain a reliable SLM pressure.<br>
