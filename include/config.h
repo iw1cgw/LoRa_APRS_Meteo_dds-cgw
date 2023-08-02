@@ -2,7 +2,7 @@
 
 #define Project "LoRa_APRS_Igate+Meteo"
 #define Release "1.01"
-char Build[7] = "230731";
+char Build[7] = "230802";
 #define DESTCALL "APLGM4"
 #define Use_WiFi true                   // enable Wi-Fi connection and HTTP web server
 #define Hostname "LORAMETEO"         // Hostname, name of computer visible in the network
