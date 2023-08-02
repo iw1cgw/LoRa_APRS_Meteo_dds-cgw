@@ -840,7 +840,7 @@ void lora_setup() {
   LoRa.setTxPower(LoRa_power);
   delay(3000);
   if (!aprsSwitch) {
-    //LoRa.sleep();
+    LoRa.sleep();
   }
 }
 
@@ -855,7 +855,7 @@ void lora_send(String tx_data) {
   LoRa.endPacket();
   LoRa.setFrequency(atoi(frequencyC)*1000);
   if (!aprsSwitch) {
-    //LoRa.sleep();
+    LoRa.sleep();
   }
 }
 
@@ -1811,7 +1811,7 @@ void status_display()
     Serial.print(F("Wifi ssid: ")); Serial.println(WiFi_ssiD);
     Serial.print(F("Wifi password: "));  Serial.println(WiFi_pwd);
     Serial.print(F("APRS passcode for ")); Serial.print(call); Serial.print(F(": "));Serial.println(aprs_passcode);
-    Serial.print(F("APRS server : ")); Serial.println(aprs_server);
+    Serial.print(F("APRS server: ")); Serial.println(aprs_server);
 
     righello();
     Serial.println(F(bottom));
@@ -1901,17 +1901,16 @@ void initial_reset()
     EEPROM_writer(35, 38,buff1);
 
     EEPROM_writer(41, 46,frequencyC);       // frequenza dalla cella 41 fino alla 46
-    char buff2[6]="12345"; 
+    char buff2[6]="12345";                  // buff2 = 5 char [ 0--> 4 ]
     EEPROM_writer(53, 57,buff2);
     EEPROM_writer(53, 57,buff2);
-    char buff3[24]=".. WXmeteo LoRa tech .."; 
+    char buff3[24]=".. WXmeteo LoRa tech .."; // buff3 = 23 char [ 0--> 22 ]
 
-
-    EEPROM_writer(60, 111,buff3);
-    EEPROM_writer(112, 163,buff3);
-    EEPROM_writer(170, 189,buff2);
-    EEPROM_writer(190, 209,buff2);
-    EEPROM_writer(210, 229,buff2);
+    EEPROM_writer(60,   60+22,buff3);EEPROM.write(60+23,  254);   // buff3 = 23 char [ 0--> 22 ]
+    EEPROM_writer(112, 112+22,buff3);EEPROM.write(112+23, 254);   // buff3 = 23 char [ 0--> 22 ]
+    EEPROM_writer(170,  170+4,buff2);EEPROM.write(170+5,  254);   // buff2 = 5 char [ 0--> 4 ]
+    EEPROM_writer(190,  190+4,buff2);EEPROM.write(190+5,  254);   // buff2 = 5 char [ 0--> 4 ]
+    EEPROM_writer(210,  210+4,buff2);EEPROM.write(210+5,  254);   // buff2 = 5 char [ 0--> 4 ]
 
     EEPROM.write(12, 3);
     EEPROM.write(13, 10);   
@@ -1976,6 +1975,10 @@ void verifica_parametri()
     IGATE_CALLSIGN = String(call)+String("-")+String(igate_ssiD); 
     APRSISServer = String(aprs_server);
     APRS_LatLon();
+
+    if (!aprsSwitch) {
+      LoRa.sleep();
+    }
 
   }
 
@@ -2059,9 +2062,9 @@ void EEPROM_eraser(byte start,byte stop)
 void EEPROM_writer(byte start, byte stop,char tmp_data[50])
   {
     tmp=0;
-    while (tmp+start <= start+stop) // -- scrivi EEPROM 
+    while (tmp+start <= stop) // -- scrivi EEPROM 
       {
-        EEPROM.write( start+tmp, tmp_data[tmp] ); 
+        EEPROM.write( tmp+start, tmp_data[tmp] ); 
         tmp++;
       }
     EEPROM.commit(); 
