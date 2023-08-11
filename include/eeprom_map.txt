@@ -7,8 +7,7 @@
   byte of the EEPROM can only hold a
   value from 0 to 255.
  
-  
-0 - 5   // build:230405 | 6
+0 - 5   // Build:230405 | 6
 6 - 11  // call: IZ1GZA | 6
 12 - 12 // meteo_iD: 13 | 1  
 13 - 13 // igate_iD: 13 | 1  
@@ -21,6 +20,10 @@
 47 - 51 // drift termometro | 5 caratteri
 52 - 52 // scelta termometro [ solo per BMP280+AHT20: 0= temp BMP280 | 1= temp AHT20
 53 - 57 // aprs passcode
+58 - 58 // Xmode swapp | bool
+59 - 59 // Use_WiFi| bool
+
+
 
 60 - 111 // info meteo: .. WXmeteo Alma Frabosa - 650m .. | 50 caratteri + flag fine testo - carattere cella 111 -
 112 - 163 // info igate: .. WXmeteo Alma Frabosa - 650m .. | 50 caratteri + flag fine testo - carattere cella 163 -

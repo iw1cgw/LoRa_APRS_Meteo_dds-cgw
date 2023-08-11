@@ -1,10 +1,10 @@
 // GENERAL SETTINGS
 
 #define Project "LoRa_APRS_Igate+Meteo"
-#define Release "1.01"
-char Build[7] = "230802";
+char Release[7]= "1.01a";
+#define Build "230811"
 #define DESTCALL "APLGM4"
-#define Use_WiFi true                   // enable Wi-Fi connection and HTTP web server
+bool Use_WiFi = true;                // enable Wi-Fi connection and HTTP web server
 #define Hostname "LORAMETEO"         // Hostname, name of computer visible in the network
 
 // METEO SERVICE SETTINGS
@@ -55,9 +55,19 @@ char Build[7] = "230802";
 #define LoRa_RST 14
 #define LoRa_DIO0 26
 
-#define LoRa_SpreadingFactor 12
+
+//-------------------------------------------// parametri OESTYLE standard
+#define LoRa_SpreadingFactor 12         // The Spreading Factor varies between 128 = 2^7 (SF7) and 4096 = 2^12 (SF12)
 #define LoRa_SignalBandwidth 125000
 #define LoRa_CodingRate4 5
+
+
+//-------------------------------------------// parametri sperimentali veloci - https://meshtastic.org/docs/overview/radio-settings
+#define LoRa_XSpreadingFactor 9             // Medium Fast / - 143 dB budget - new 
+#define LoRa_XSignalBandwidth 250000
+#define LoRa_XCodingRate4 4
+
+
 
 // DEBUG SETTINGS
 
