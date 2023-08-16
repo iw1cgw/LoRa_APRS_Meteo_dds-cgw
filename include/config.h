@@ -2,7 +2,7 @@
 
 #define Project "LoRa_APRS_Igate+Meteo"
 char Release[7]= "1.01a";
-#define Build "230811"
+#define Build "230815"
 #define DESTCALL "APLGM4"
 bool Use_WiFi = true;                // enable Wi-Fi connection and HTTP web server
 #define Hostname "LORAMETEO"         // Hostname, name of computer visible in the network
@@ -32,8 +32,6 @@ bool Use_WiFi = true;                // enable Wi-Fi connection and HTTP web ser
 #define ANEMO_RECALC_LIMIT_TIMEOUT 900  // auto update long-period speed after x seconds (should be METEO_BEACON * 60)
 #define ANEMO_RECALC_ACTUAL_SPEED 4    // set actual wind speed to 0 if anemometer is not spinning for x seconds
 
-#define IGATE_BCN_NETWORK true              // if true, will send igate beacon via aprs-is, if false will send via LoRa
-
 #define APRS_IS_Port 14580                  // server port, keep default (14580)
 
 #define USE_LASTRX_STATUS true              // display Last RX status on igate
@@ -62,6 +60,7 @@ bool Use_WiFi = true;                // enable Wi-Fi connection and HTTP web ser
 #define LoRa_CodingRate4 5
 
 
+#define Experimental false
 //-------------------------------------------// parametri sperimentali veloci - https://meshtastic.org/docs/overview/radio-settings
 #define LoRa_XSpreadingFactor 9             // Medium Fast / - 143 dB budget - new 
 #define LoRa_XSignalBandwidth 250000
