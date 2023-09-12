@@ -119,6 +119,7 @@ float gust = 0;
 bool meteoSwitch = true; // = USE_METEO
 bool aprsSwitch = true;  // = Use_IGATE
 bool digiSwitch = true;  // = USE_DIGIPEATER
+bool oledSwitch = true;  // = oled acceso
 bool Xmode = false;
 
 // -------------------------------------------------------------------------------------------
@@ -217,7 +218,9 @@ void status_display();
 void initial_reset();
 void load_param();
 void make_display();
+void make_meteo_display();
 void Xmode_swapp();
+void OLED_swapp();
 
 void EEPROM_eraser(byte start, byte stop);
 void EEPROM_writer(byte start, byte stop, char tmp_data[50]);
@@ -230,6 +233,7 @@ void WiFi_setup();
 
 byte WiFi_setup_retry;
 unsigned long WiFi_login_retry;
+unsigned long oled_carousel;
 
 char lat_meteo[10] ="";
 char lon_meteo[11] ="";
@@ -264,6 +268,7 @@ unsigned LoRa_power=2;
 byte cnt_meteo_send=0;
 byte tx_interval=10;
 
+int drift_pres=10;
 float drift_therm=0;
 char drift_thermC[6];
 
@@ -446,6 +451,9 @@ void setup() {
   lastMtBeacon = millis() - int(tx_interval * 60000);
   lastIgBeacon = millis() - int(tx_interval * 60000);
   
+  if (oledSwitch == true) display.dim(true);
+  else display.dim(false);
+  display.display();
 
 }
 
@@ -537,7 +545,13 @@ void loop()
            tmp++;    
           } 
       }
-     
+
+  if ( meteoSwitch && millis() - oled_carousel > 30000 )
+    {
+      make_meteo_display();
+      oled_carousel = millis();
+    }
+  
   if (check_wifi() && wifiStatus == false) 
     {
       Serial.println("WiFi connected");
@@ -553,7 +567,7 @@ void loop()
 
 
   if (Use_WiFi && check_wifi()) {
-    if (aprsSwitch && aprsSwitch && !check_aprsis() && aprsLastReconnect + 60000 < millis()) {
+    if (aprsSwitch && !check_aprsis() && aprsLastReconnect + 60000 < millis()) {
       aprsis.stop();
       delay(100);
       aprsLastReconnect = millis();
@@ -1237,14 +1251,21 @@ float getHum()
 float getPressure()
   {
     if (BM_sensor_status)
+      
+        if(BMPstatus && atoi(altitude) <= 400 ) return drift_pres+( (bmp.readPressure()           * ( pow(1.0 - (0.0065 * atoi(altitude) * -1 / (273.15 + getTempC() )), 5.255)) ) / 100 );
+        if(BMPstatus && atoi(altitude) >  400 ) return drift_pres+( bmp.readPressure() / pow((1-((float)(atoi(altitude)))/44330), 5.255))/100.0; 
 
-    if(BMPstatus) return( (bmp.readPressure()           * ( pow(1.0 - (0.0065 * atoi(altitude) * -1 / (273.15 + getTempC() )), 5.255)) ) / 100 );
-    if(BMEstatus)
-      {
-        bme_pressure->getEvent(&pressure_event);
-                  return( ((pressure_event.pressure*100) * ( pow(1.0 - (0.0065 * atoi(altitude) * -1 / (273.15 + getTempC() )), 5.255)) ) / 100 );
-      }
-    
+        if(BMEstatus && atoi(altitude) <= 400 )
+          {
+            bme_pressure->getEvent(&pressure_event);
+            return drift_pres + ( ((pressure_event.pressure*100) * ( pow(1.0 - (0.0065 * atoi(altitude) * -1 / (273.15 + getTempC() )), 5.255)) ) / 100 );
+          }
+        if(BMEstatus && atoi(altitude) > 400 )
+          {
+            bme_pressure->getEvent(&pressure_event);
+            return drift_pres + ( (pressure_event.pressure *100) /pow((1-((float)(atoi(altitude)))/44330), 5.255))/100.0; 
+          }
+       
     else return 0;
   }
 
@@ -1561,7 +1582,7 @@ char readCarMenu()
     {
       carMenu = 0;
       righello();
-      Serial.println(F("\n.. CONFIG MENU ..\n\n   : for set your call digit 'c' + 'enter'\n   subsequently enter your call + 'enter'\n"));
+      Serial.println(F("\n.. CONFIG MENU ..\n\n   EXAMPLE: for set your call digit 'c' + 'enter'\n   subsequently enter your call + 'enter'\n"));
       righello();
       Serial.println(F("(c) callsign:" ));
       righello();
@@ -1569,26 +1590,29 @@ char readCarMenu()
       Serial.println(F("(2) meteo lat/long"));
       Serial.println(F("(a) meteo altitude"));
       if ( AHTstatus == true ) Serial.println(F("(u) meteo use thermometer"));
-      Serial.println(F("(3) meteo drift thermal sensor"));
+      Serial.println(F("(h) meteo drift thermal sensor"));
+      Serial.println(F("(r) meteo drift pressure sensor"));
       Serial.println(F("(4) meteo info"));
-      Serial.println(F("(m) meteo APRS-IS switch"));
+      Serial.println(F("(m) meteo APRS-IS on/off"));
       righello();
       Serial.println(F("(5) iGate ssid"));
       Serial.println(F("(6) iGate lat/long"));
-      Serial.println(F("(i) iGate APRS-IS switch"));
+      Serial.println(F("(i) iGate APRS-IS on/off"));
       //Serial.println(F("(6) igate info"));
       righello();
       Serial.println(F("(f) LoRa frequency"));
       Serial.println(F("(p) LoRa power"));
-      Serial.println(F("(d) LoRa digipeater switch"));
+      Serial.println(F("(d) LoRa digipeater on/off"));
       righello();
-      Serial.println(F("(n) use Wifi"));
+      Serial.println(F("(n) Wifi on/off"));
       Serial.println(F("(w) Wifi ssid"));
       Serial.println(F("(7) Wifi password"));
       righello();
       Serial.println(F("(t) APRS beacons tx interval"));
       Serial.println(F("(8) APRS-IS passcode"));
       Serial.println(F("(9) APRS-IS server"));
+      righello();
+      Serial.println(F("(y) display OLED on/off"));
       Serial.println(F("(0) EXIT"));
       righello();
     
@@ -1596,10 +1620,47 @@ char readCarMenu()
       switch (carMenu)
         {
           case '0' :
-           if (!check_wifi() && Use_WiFi) WiFi_setup();
-           status_display();
-           make_display();
-           break;
+            verifica_parametri();
+            if (!check_wifi() && Use_WiFi) WiFi_setup();
+            status_display();
+            make_display();
+          break;
+
+
+          case 'h' :
+              Serial.print(F("Thermal drift (max +/- 5) | ex: -0.25"));
+              readCharArray(drift_thermC);
+              if (atof(drift_thermC) >5 || atof(drift_thermC) < -5 )
+                {
+                  Serial.println(F(" = ERROR"));
+                  break;
+                }
+              if (ptr>5 ) ptr=5;
+              EEPROM_writer(47,47+ptr-1,drift_thermC);
+              EEPROM_eraser(47+ptr,51);
+              Serial.print(F(" = "));
+              drift_therm = atof(drift_thermC);  
+              Serial.println(drift_therm, 2);   
+          break;
+
+
+          case 'r' :
+            Serial.print(F("pressure drift (max +/- 10 hPa) | ex: -2"));
+            readCharArray(tmp_buffer);
+            if (atoi(tmp_buffer) >=-10 && atoi(tmp_buffer) <= 10 )
+              {
+                drift_pres = atoi(tmp_buffer);
+                Serial.print(F(" = "));
+                Serial.println(drift_pres);
+                EEPROM.write(169, (drift_pres+10));
+                EEPROM.commit();
+                break;
+              }
+            else 
+              {
+                Serial.println(F(" = ERROR"));
+                break;
+              }
 
 
           case 'c' :
@@ -1610,71 +1671,62 @@ char readCarMenu()
             EEPROM_eraser(6+ptr,11);
             Serial.print(F(" = "));
             Serial.println(call);
-            break;
+          break;
 
           
           case 'x' :
             if(Experimental) Xmode_swapp();
-            break;
+          break;
          
 
-            case 'd' :
-            Serial.print(F("0=disabled | 1=enabled - ex: 1"));
-            readCharArray(tmp_buffer);
-            if (atoi(tmp_buffer) > 0 ) digiSwitch = true;
-            else digiSwitch = false;
-            Serial.print(F(" = "));
-            Serial.print(tmp_buffer);
-            if ( digiSwitch == false ) Serial.println(F(" = DISABLED"));
-            if ( digiSwitch == true ) Serial.println(F(" = ENABLED"));
-            EEPROM.write(167, atoi(tmp_buffer));
-            EEPROM.commit();
-            verifica_parametri();
-           break; 
+          case 'y' :
+            OLED_swapp();
+          break;
 
 
-            case 'n' :
-            Serial.print(F("0=WiFi disabled | 1=WiFi enabled - ex: 1"));
-            readCharArray(tmp_buffer);
-            if (atoi(tmp_buffer) > 0 ) Use_WiFi = true;
-            else Use_WiFi = false;
-            Serial.print(F(" = "));
-            Serial.print(tmp_buffer);
-            if ( Use_WiFi == false ) Serial.println(F(" = DISABLED"));
-            if ( Use_WiFi == true ) Serial.println(F(" = ENABLED"));
-            EEPROM.write(59, atoi(tmp_buffer));
-            EEPROM.commit();
-           break; 
+          case 'n' :
+            Use_WiFi = !Use_WiFi;
+            Serial.print(F("WiFi is: "));
+            if (Use_WiFi ) Serial.println(F("ON"));
+            else Serial.println(F("OFF"));
+            EEPROM.write(59, Use_WiFi);
+            EEPROM.commit(); 
+            make_display();
+          break;
 
-          
+
+          case 'm' :
+            meteoSwitch = !meteoSwitch;
+            Serial.print(F("meteo APRS-IS is: "));
+            if (meteoSwitch ) Serial.println(F("ON"));
+            else Serial.println(F("OFF"));
+            EEPROM.write(165, meteoSwitch);
+            EEPROM.commit(); 
+            make_display();
+          break;
+       
+
           case 'i' :
-            Serial.print(F("0=disabled | 1=enabled - ex: 1"));
-            readCharArray(tmp_buffer);
-            if (atoi(tmp_buffer) > 0 ) aprsSwitch = true;
-            else aprsSwitch = false;
-            Serial.print(F(" = "));
-            Serial.print(tmp_buffer);
-            if ( aprsSwitch == false ) Serial.println(F(" = DISABLED"));
-            if ( aprsSwitch == true ) Serial.println(F(" = ENABLED"));
-            EEPROM.write(166, atoi(tmp_buffer));
-            EEPROM.commit();
-            verifica_parametri();
-           break;  
-          
-          
-            case 'm' :
-            Serial.print(F("0=disabled | 1=enabled - ex: 1"));
-            readCharArray(tmp_buffer);
-            if (atoi(tmp_buffer) > 0 )meteoSwitch = true;
-            else meteoSwitch = false;
-            Serial.print(F(" = "));
-            Serial.print(tmp_buffer);
-            if ( meteoSwitch == false ) Serial.println(F(" = DISABLED"));
-            if ( meteoSwitch == true ) Serial.println(F(" = ENABLED"));
-            EEPROM.write(165, atoi(tmp_buffer));
-            EEPROM.commit();
-           break;  
-           
+            aprsSwitch = !aprsSwitch;
+            Serial.print(F("iGate APRS-IS is: "));
+            if (aprsSwitch ) Serial.println(F("ON"));
+            else Serial.println(F("OFF"));
+            EEPROM.write(166, aprsSwitch);
+            EEPROM.commit(); 
+            make_display();
+          break;
+    
+
+          case 'd' :
+            digiSwitch = !digiSwitch;
+            Serial.print(F("iGate APRS-IS is: "));
+            if (digiSwitch ) Serial.println(F("ON"));
+            else Serial.println(F("OFF"));
+            EEPROM.write(167, digiSwitch);
+            EEPROM.commit(); 
+            make_display();
+          break;
+        
 
           case 'u' :
             if ( AHTstatus == false ) break;
@@ -1688,7 +1740,7 @@ char readCarMenu()
             if ( ch_term == 1 ) Serial.println(F(" = AHT20"));
             EEPROM.write(52, ch_term);
             EEPROM.commit();
-           break;          
+          break;          
           
  
           case '1' :
@@ -1700,7 +1752,7 @@ char readCarMenu()
             Serial.println(meteo_ssiD);
             EEPROM.write(12, meteo_ssiD);
             EEPROM.commit();
-           break;  
+          break;  
 
 
           case '5' :
@@ -1712,7 +1764,7 @@ char readCarMenu()
             Serial.println(igate_ssiD);
             EEPROM.write(13, igate_ssiD);
             EEPROM.commit();
-           break;   
+          break;   
   
 
           case '2' :
@@ -1754,10 +1806,10 @@ char readCarMenu()
             Serial.print(F(","));
             Serial.println(atof(lon_meteo),6);
             verifica_parametri();         // calcola in notazione APRS
-            break; 
+          break; 
             
 
-           case '6' :
+          case '6' :
             Serial.print(F("lat,long igate - ex: 78.7562,18.5162"));
             readCharArray(tmp_buffer);
         
@@ -1797,7 +1849,7 @@ char readCarMenu()
             Serial.println(atof(lon_igate),6);
             verifica_parametri();         // calcola in notazione APRS
 
-            break;
+          break;
       
           
           case 'a' :
@@ -1808,10 +1860,10 @@ char readCarMenu()
             EEPROM_eraser(35+ptr,38);
             Serial.print(F(" = "));
             Serial.println(altitude);
-            break;
+          break;
 
 
-            case 'w' :
+          case 'w' :
             Serial.print(F("WiFi ssiD [ max 20 char ]"));
             readCharArray(WiFi_ssiD);
             if ( ptr>20 ) ptr=20; 
@@ -1819,10 +1871,10 @@ char readCarMenu()
             EEPROM_eraser(170+ptr,189);
             Serial.print(F(" = "));
             Serial.println(WiFi_ssiD);
-            break;
+          break;
 
 
-            case '7' :
+          case '7' :
             Serial.print(F("WiFi password [ max 20 char ]"));
             readCharArray(WiFi_pwd);
             if (ptr>20 ) ptr=20;
@@ -1830,10 +1882,10 @@ char readCarMenu()
             EEPROM_eraser(190+ptr,209);
             Serial.print(F(" = "));
             Serial.println(WiFi_pwd);
-            break;
+          break;
 
 
-            case '9' :
+          case '9' :
             Serial.print(F("APRS server - ex: rotate.aprs2.net"));
             readCharArray(aprs_server);
             if (ptr>20 ) ptr=20;
@@ -1842,7 +1894,7 @@ char readCarMenu()
             Serial.print(F(" = "));
             Serial.println(aprs_server);
             APRSISServer = String(aprs_server);
-            break;
+          break;
 
 
           case '4' :
@@ -1853,35 +1905,17 @@ char readCarMenu()
             EEPROM_eraser(60+ptr,111);
             Serial.print(F(" = "));
             Serial.println(meteo_info);
-            break;
-
-          case '3' :
-            Serial.print(F("Thermal drift (max +/- 5) | ex: -0.25"));
-            readCharArray(drift_thermC);
-            if (atof(drift_thermC) >5 || atof(drift_thermC) < -5 )
-              {
-                Serial.println(F(" = ERROR"));
-                break;
-              }
-            if (ptr>5 ) ptr=5;
-            EEPROM_writer(47,47+ptr-1,drift_thermC);
-            EEPROM_eraser(47+ptr,51);
-            Serial.print(F(" = "));
-            drift_therm = atof(drift_thermC);  
-            Serial.println(drift_therm, 2);   
-            break;
+          break;
 
 
-            case '8' :
+          case '8' :
             Serial.print(F("APRS passcode - ex: 19617"));
             readCharArray(aprs_passcode);
             EEPROM_writer(53,53+4,aprs_passcode);
             Serial.print(F(" = "));
             Serial.println(aprs_passcode);
-            break;
-
-        
-
+          break;
+      
 
           /*
           case 'x' :
@@ -1901,7 +1935,7 @@ char readCarMenu()
             EEPROM_writer(41,46,frequencyC);
             Serial.print(F(" = "));  
             Serial.println(frequencyC);
-            break;
+          break;
 
 
           case 'p' :
@@ -1913,7 +1947,7 @@ char readCarMenu()
             Serial.println(LoRa_power);
             EEPROM.write(38, LoRa_power);
             EEPROM.commit();
-            break;
+          break;
 
 
           case 't' :
@@ -1925,7 +1959,7 @@ char readCarMenu()
             Serial.println(tx_interval);
             EEPROM.write(40, tx_interval);
             EEPROM.commit();
-            break;
+          break;
          
          }        
   } while (carMenu != '0' );
@@ -2000,6 +2034,7 @@ void status_display()
         if (ch_term == 1 ) Serial.println(F("AHT20"));
        }
     Serial.print(F("thermal drift: ")); Serial.print(drift_therm);  Serial.println(F(" Celsius"));
+    Serial.print(F("pressure drift: ")); Serial.print(drift_pres);  Serial.println(F(" hPa"));
     
     Serial.print(F("meteo APRS-IS: "));
     if (meteoSwitch) Serial.println(F("enabled"));
@@ -2016,16 +2051,14 @@ void status_display()
     Serial.print(F(" , "));
     Serial.println(atof(lon_igate),6);
 
-    Serial.print(F("iGate APRS-IS; "));
+    Serial.print(F("iGate APRS-IS: "));
     if (aprsSwitch ) Serial.println(F("enabled"));
     else Serial.println(F("disabled"));
 
 
     righello();
     Serial.print(F("beacons tx interval: ")); Serial.print(tx_interval); Serial.println(F(" minutes"));
-
-    
-
+   
     
     righello();
     Serial.print(F("LoRa frequency: ")); Serial.print(frequencyC); Serial.println(F(" KHz"));
@@ -2037,7 +2070,7 @@ void status_display()
     else Serial.println(F("disabled"));
     
     righello();
-    if (!Use_WiFi ) Serial.println(F("Wifi not enabled")); 
+    if (!Use_WiFi ) Serial.println(F("Wifi: not enabled")); 
     else
       {
         Serial.print(F("Wifi ssid: ")); Serial.println(WiFi_ssiD);
@@ -2063,7 +2096,7 @@ void status_display()
 void load_param()
   {
     /* ---------------------- determina se occorre factory reset 
-      il primi 6 caratteri della EEPROM si attendono il dato della Build
+      il primi 6 caratteri della EEPROM si attendono il dato della release
       se non coincide cosa si legge in EEPROM viene avviata la routine di factory reset
     */ 
 
@@ -2105,6 +2138,9 @@ void load_param()
     
     if (EEPROM.read( 167 ) > 0 ) digiSwitch = true;   // USE_DIGIPEATER
     else digiSwitch  = false;
+    
+    oledSwitch = EEPROM.read( 168 ); // display oled on/off
+    drift_pres = EEPROM.read( 169 )-10; // drift_pres
 
     EEPROM_loader(60,111,meteo_info);
     //EEPROM_loader(112,163,igate_info);
@@ -2159,6 +2195,8 @@ void initial_reset()
     EEPROM.write(165, 1);// switch meteo
     EEPROM.write(166, 1);// switch igate
     EEPROM.write(167, 1);// switch digi
+    EEPROM.write(168, 0);// oled on
+    EEPROM.write(169, 10);// drift_pres - 10 equivale a un drift di 0hPA
 
     EEPROM.commit();
 
@@ -2196,6 +2234,10 @@ void verifica_parametri()
     if ( drift_therm > 5 ) drift_therm = 0;
     if ( drift_therm < -5 ) drift_therm = 0;
 
+    if ( drift_pres > 10 ) drift_pres = 0;
+    if ( drift_pres < -10 ) drift_pres = 0;
+
+
     if ( ch_term >1 ) ch_term = 0;
     if ( AHTstatus == false ) ch_term = 0;
 
@@ -2222,6 +2264,7 @@ void verifica_parametri()
       LoRa.sleep();
       Serial.println(F("LoRA module set to sleep mode"));
     }
+
 
   }
 
@@ -2383,6 +2426,27 @@ void Xmode_swapp()
 
 
 
+  void OLED_swapp()
+  {
+    oledSwitch = !oledSwitch;
+    Serial.print(F("display oled is: "));
+    if (oledSwitch )
+      {
+        Serial.println(F("OFF"));
+        display.dim(true);
+      }
+    else
+      {
+        Serial.println(F("ON"));
+        display.dim(false);
+      }
+    EEPROM.write(168, oledSwitch);
+    EEPROM.commit(); 
+    display.display();
+  }
+
+
+
 void WiFi_setup()
 {
     Serial.println("WiFi not connected!");
@@ -2416,11 +2480,58 @@ void WiFi_setup()
 
 
 
+ /*
+  ---------------------------------------------------------------------------
+    GRAPHIC DISPLAY 
+  ---------------------------------------------------------------------------
+  */
+  
+void make_meteo_display()
+  {
+    
+    display.clearDisplay();
+    display.setTextColor(WHITE);
+    display.setTextSize(1);
+    byte sep = 0;
+    if ( BM_sensor_status )
+      {
+        
+            float temp = getTempC();
+            String stemp = String(temp,1);
+            float press = getPressure();
+            String spressd = String(press,0);
+            float Hum = getHum();
+            String sHum = String(Hum);
+        
+      
+        display.setCursor(0,sep);
+        display.print("Temperature: ");
+        display.print(stemp);
+        display.println(" C");
+        sep=sep+12;
 
+        display.setCursor(0,sep);
+        display.print("Pressure   : ");
+        display.print(spressd);
+        display.println(" hPa");
+        sep=sep+12;
 
-
-
-
+        display.setCursor(0,sep);
+        display.print("Humidity   : ");
+        display.print(sHum);
+        display.println(" %");
+        sep=sep+12;
+      }
+    display.setCursor(0,sep);
+    display.println("---------------------");
+    display.setCursor(0,sep+12);
+    display.print(METEO_CALLSIGN);
+    display.setCursor(0,57);    //fisso fondo schermo dx
+    display.print("ip: ");
+    myIP = ipToString(WiFi.localIP());
+    display.print(myIP);
+    display.display();  
+  }
 
 
 
@@ -2458,6 +2569,8 @@ void WiFi_setup()
 165 - 165 // switch meteo [meteoSwitch]
 166 - 166 / /switch igate [aprsSwitch]
 167 - 167 // switch digipeater [digiSWitch]
+168 - 168 // display on/off
+169 - 169 // drift_pres base 10 | 10 = 0hPa | 20 = +10hPa | 0 = -10hPa
 
 170 - 189 // WiFi ssiD
 190 - 209 // WiFi password
