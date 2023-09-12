@@ -1,9 +1,9 @@
 // GENERAL SETTINGS
 
 #define Project "LoRa_APRS_Igate+Meteo"
-char Release[7]= "1.01a";
-#define Build "230815"
-#define DESTCALL "APLGM4"
+char Release[7]= "1.01b";
+#define Build "230912"
+#define DESTCALL "APLGM4"            // please, NOT MODIFY !!! 
 bool Use_WiFi = true;                // enable Wi-Fi connection and HTTP web server
 #define Hostname "LORAMETEO"         // Hostname, name of computer visible in the network
 
@@ -13,10 +13,10 @@ bool Use_WiFi = true;                // enable Wi-Fi connection and HTTP web ser
 // --- i comment sulle stringhe senza georeferenziazione --- //
 // per iGate viene indicato il valore dell'ultimo aascolto
 // per meteo viene indicato il banner di GitHub
-#define METEO_STATUS "https://github.com/iw1cgw/LoRa_APRS_Meteo_dds-cgw"  
+#define METEO_STATUS "https://iw1cgw.wordpress.com/"  
 //#define METEO_STATUS "LoRa Meteo based by OK2DDS project"
 
-#define igate_info "https://github.com/iw1cgw/LoRa_APRS_Meteo_dds-cgw"
+#define igate_info "https://iw1cgw.wordpress.com/"
 
 #define USE_METEO_STATUS true           // send status below in timeout of igate packet (needs wifi, igate on and aprs-is)
 #define METEO_STATUS_SEND_INTERVAL 10   // [ cgw ] send beacon meteo status after nr. xx beacon meteo

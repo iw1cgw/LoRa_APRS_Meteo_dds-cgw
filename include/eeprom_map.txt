@@ -31,6 +31,8 @@
 165 - 165 // switch meteo [meteoSwitch]
 166 - 166 / /switch igate [aprsSwitch]
 167 - 167 // switch digipeater [digiSWitch]
+168 - 168 // display on/off
+169 - 169 // pres trim
 
 170 - 189 // WiFi ssiD
 190 - 209 // WiFi password
