@@ -2,7 +2,7 @@
 
 #define Project "LoRa_APRS_Igate+Meteo"
 char Release[7]= "1.01b";
-#define Build "230912"
+#define Build "230925"
 #define DESTCALL "APLGM4"            // please, NOT MODIFY !!! 
 bool Use_WiFi = true;                // enable Wi-Fi connection and HTTP web server
 #define Hostname "LORAMETEO"         // Hostname, name of computer visible in the network
@@ -23,14 +23,14 @@ bool Use_WiFi = true;                // enable Wi-Fi connection and HTTP web ser
 
 #define GRAPH_LIMIT 144                   // how many values to store for graphs (too high can cause errors)
 
-#define USE_ANEMOMETER false                     // turn on/off wind meter
-#define HALL_SENSOR_PIN 35                 // use only ADC_1 pins
-#define ANEMOMETER_LENGTH 0.25           // how long distance (meters) is done by spinning anemometer from one magnet to the next one
-#define ANEMO_RECALC_LIMIT 2            // calibrate hall sensor
-#define ANEMO_AC_THRESHOLD 1830          // analog value threshold to trigger magnet detection
-#define ANEMO_AC_LOSE      2000          // analog value threshold - magnet is away
-#define ANEMO_RECALC_LIMIT_TIMEOUT 900  // auto update long-period speed after x seconds (should be METEO_BEACON * 60)
-#define ANEMO_RECALC_ACTUAL_SPEED 4    // set actual wind speed to 0 if anemometer is not spinning for x seconds
+#define USE_ANEMOMETER false              // turn on/off wind meter
+#define HALL_SENSOR_PIN 35                // use only ADC_1 pins
+#define ANEMOMETER_LENGTH 0.25            // how long distance (meters) is done by spinning anemometer from one magnet to the next one
+#define ANEMO_RECALC_LIMIT 2              // calibrate hall sensor
+#define ANEMO_AC_THRESHOLD 1830           // analog value threshold to trigger magnet detection
+#define ANEMO_AC_LOSE      2000           // analog value threshold - magnet is away
+#define ANEMO_RECALC_LIMIT_TIMEOUT 900    // auto update long-period speed after x seconds (should be METEO_BEACON * 60)
+#define ANEMO_RECALC_ACTUAL_SPEED 4       // set actual wind speed to 0 if anemometer is not spinning for x seconds
 
 #define APRS_IS_Port 14580                  // server port, keep default (14580)
 
