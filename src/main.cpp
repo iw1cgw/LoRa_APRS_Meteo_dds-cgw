@@ -1301,18 +1301,27 @@ String getHumAPRS() {
 
 
 
-String getTempAPRS() {
-  if (BM_sensor_status) {
-  float fahrenheit = getTempC();
-  fahrenheit *= 9;
-  fahrenheit /= 5;
-  int ifahrenheit = fahrenheit + 32;
-  if (!(ifahrenheit < 1000)) ifahrenheit = 0;
-  String sfahrenheit = String(ifahrenheit);
-  if (ifahrenheit < 100) sfahrenheit = String("0") + String(sfahrenheit);
-  if (ifahrenheit < 10) sfahrenheit = String("0") + String(sfahrenheit);
-  return sfahrenheit;
-  } else return "000";
+String getTempAPRS()
+ {
+  if (BM_sensor_status)
+   {
+    float fahrenheit = getTempC();
+    
+    fahrenheit *= 9;
+    fahrenheit /= 5;
+    int ifahrenheit = fahrenheit + 32;
+  
+    int ifahrenheit_abs = abs(ifahrenheit);
+    String sfahrenheit = String(ifahrenheit_abs);
+
+    if ( ifahrenheit_abs < 100 && ifahrenheit >= 0 ) sfahrenheit = String("0") + sfahrenheit;
+    if ( ifahrenheit_abs < 10                      ) sfahrenheit = String("0") + sfahrenheit;
+    if ( ifahrenheit < 0 ) sfahrenheit = String("-") + sfahrenheit;
+
+    return sfahrenheit;
+
+  } else return "...";
+
 }
 
 
