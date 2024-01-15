@@ -13,8 +13,8 @@ bool Use_WiFi = true;                // enable Wi-Fi connection and HTTP web ser
 // --- i comment sulle stringhe senza georeferenziazione --- //
 // per iGate viene indicato il valore dell'ultimo ascolto
 // per meteo viene indicato il banner di GitHub
-//#define METEO_STATUS "https://iw1cgw.wordpress.com/"  
-#define METEO_STATUS "--- test meteo status ---" 
+#define METEO_STATUS "https://iw1cgw.wordpress.com/"  
+
 //#define METEO_STATUS "LoRa Meteo based by OK2DDS project"
 
 //#define igate_info "433.775MHz LoRa iGate/digipeater"
