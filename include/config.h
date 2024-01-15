@@ -1,9 +1,9 @@
 // GENERAL SETTINGS
 
 #define Project "LoRa_APRS_Igate+Meteo"
-char Release[7]= "1.01c";
-#define Build "231211"
-#define DESTCALL "APLGM5"            // please, NOT MODIFY !!! 
+char Release[7]= "1.02";
+#define Build "240114"
+#define DESTCALL "APLGM5"            // NOT MODIFY !!! 
 bool Use_WiFi = true;                // enable Wi-Fi connection and HTTP web server
 #define Hostname "LORAMETEO"         // Hostname, name of computer visible in the network
 
@@ -11,12 +11,13 @@ bool Use_WiFi = true;                // enable Wi-Fi connection and HTTP web ser
 
 
 // --- i comment sulle stringhe senza georeferenziazione --- //
-// per iGate viene indicato il valore dell'ultimo aascolto
+// per iGate viene indicato il valore dell'ultimo ascolto
 // per meteo viene indicato il banner di GitHub
-#define METEO_STATUS "https://iw1cgw.wordpress.com/"  
+//#define METEO_STATUS "https://iw1cgw.wordpress.com/"  
+#define METEO_STATUS "--- test meteo status ---" 
 //#define METEO_STATUS "LoRa Meteo based by OK2DDS project"
 
-#define igate_info "https://iw1cgw.wordpress.com/"
+//#define igate_info "433.775MHz LoRa iGate/digipeater"
 
 #define USE_METEO_STATUS true           // send status below in timeout of igate packet (needs wifi, igate on and aprs-is)
 #define METEO_STATUS_SEND_INTERVAL 10   // [ cgw ] send beacon meteo status after nr. xx beacon meteo
@@ -44,7 +45,7 @@ bool Use_WiFi = true;                // enable Wi-Fi connection and HTTP web ser
 
 // LORA MODULE SETTINGS (keep default unless experimental setup)
 
-#define SERIAL_BAUD 9600                           // serial baud
+#define SERIAL_BAUD 115200                           // serial baud
 
 #define LoRa_SCK 5
 #define LoRa_MISO 19
