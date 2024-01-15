@@ -1054,7 +1054,7 @@ void lora_setup() {
 
 
 void lora_send(String tx_data) {
-  //LoRa.setFrequency(atoi(frequencyC)*1000);
+  LoRa.setFrequency(atoi(frequencyC)*1000);
   LoRa.beginPacket();
   LoRa.write('<');
   LoRa.write(0xFF);
