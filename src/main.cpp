@@ -28,6 +28,11 @@ void beacon_upload();
 bool check_wifi();
 bool check_aprsis();
 
+
+unsigned long millis_token_tx;
+bool token_tx;
+
+
 WiFiServer server(80);
 WiFiClient aprsis;
 HTTPClient upload;
@@ -58,6 +63,7 @@ bool wifiStatus = false;
 static time_t aprsLastReconnect = 0;
 static time_t lastIgBeacon = 0;
 static time_t lastMtBeacon = 0;
+static time_t lastStBeacon = 0;
 static time_t lastUpload = 0;
 
 Adafruit_BME280 bme;
@@ -454,6 +460,7 @@ void setup() {
   
   lastMtBeacon = millis() - int(tx_interval * 60000);
   lastIgBeacon = millis() - int(tx_interval * 60000);
+  lastStBeacon = millis() - int(tx_interval * 60000);
   
   if (oledSwitch == true) display.dim(true);
   else display.dim(false);
@@ -463,6 +470,11 @@ void setup() {
 
 void loop()
 {
+
+  if ( millis() > millis_token_tx +8000 ) token_tx = HIGH;  // ogno 8 secondi rigenera un token per abilitare il Tx LoRa
+
+
+
 
   /*
     ---------------------------------------------------------------------------
@@ -497,6 +509,7 @@ void loop()
       {
         while (Serial.read() != '\n') {};
         lastMtBeacon = millis() - int(tx_interval * 60000);
+        lastStBeacon = millis() - int(tx_interval * 60000);
       }
 
     if (car == '0' )
@@ -679,6 +692,7 @@ void loop()
               lastUpload = millis();
               lastIgBeacon = millis();
               lastMtBeacon = millis();
+              lastStBeacon = millis();
               client.println("<br>TX reset done.<br>");
             }
             if (GETIndex(header, "/reset-temp")) {
@@ -864,6 +878,7 @@ void loop()
 
   //if (aprsSwitch && check_wifi() && check_aprsis() && lastIgBeacon + (tx_interval * 60000) < millis()) beacon_igate();
   if (lastIgBeacon + (tx_interval * 60000) < millis()) beacon_igate();
+  if (meteoSwitch && meteoAPRSswitch && lastStBeacon + (tx_interval * 60000) < millis()) beacon_meteo_status();
   if (meteoSwitch && meteoAPRSswitch && lastMtBeacon + (tx_interval * 60000) < millis()) beacon_meteo();
   if (Use_UPLOAD && check_wifi() && lastUpload + (UPLOAD_TIMEOUT * 60000) < millis()) beacon_upload();
 
@@ -1053,7 +1068,12 @@ void lora_setup() {
 
 
 
-void lora_send(String tx_data) {
+
+
+
+
+void lora_send(String tx_data)
+ {
   LoRa.setFrequency(atoi(frequencyC)*1000);
   LoRa.beginPacket();
   LoRa.write('<');
@@ -1061,8 +1081,11 @@ void lora_send(String tx_data) {
   LoRa.write(0x01);
   //Serial.println("TX: " + tx_data);
   Serial.println("TX: " + tx_data.substring(0,(tx_data.length()-1)));
+  token_tx = false;
+  millis_token_tx = millis();
   LoRa.write((const uint8_t *)tx_data.c_str(), tx_data.length());
   LoRa.endPacket();
+  
   //LoRa.setFrequency(atoi(frequencyC)*1000);
   /*
   if (!aprsSwitch) {
@@ -1130,22 +1153,30 @@ void aprsis_send(String aprsis_packet)
 
 
 
-void beacon_igate() {
+void beacon_igate()
+ {
   //make_display();
-  lastIgBeacon = millis();
-  String beacon = String(IGATE_CALLSIGN) + ">" + String(DESTCALL)              + ":!" + String(lat_igate_APRS) + "L" + String(lon_igate_APRS) + "&" + String(igate_info) + String(" | batt:") + String(voltage)+"V";
-  if (aprsSwitch && check_wifi()) aprsis_send(beacon);
+  if (token_tx == HIGH )
+    {
+    lastIgBeacon = millis();
+    String beacon = String(IGATE_CALLSIGN) + ">" + String(DESTCALL)              + ":!" + String(lat_igate_APRS) + "L" + String(lon_igate_APRS) + "&" + String(igate_info) + String(" | batt:") + String(voltage)+"V";
+    if (aprsSwitch && check_wifi()) aprsis_send(beacon);
          beacon = String(IGATE_CALLSIGN) + ">" + String(DESTCALL) + ",WIDE1-1" + ":!" + String(lat_igate_APRS) + "L" + String(lon_igate_APRS) + "&" + String(igate_info) + String(" | batt:") + String(voltage)+"V" + char(10);
-  if (digiSwitch) lora_send(beacon);
-}
+    if (digiSwitch && token_tx == HIGH) lora_send(beacon);
+    }
+ }
 
 
 
-void beacon_meteo() {
+
+void beacon_meteo()
+ {
+  if (token_tx == HIGH )
+   {
   
   lastMtBeacon = millis();
   if  (cnt_meteo_send > METEO_STATUS_SEND_INTERVAL ) cnt_meteo_send=0;
-  beacon_meteo_status();
+  //beacon_meteo_status();
   cnt_meteo_send++;
 
 
@@ -1181,7 +1212,7 @@ void beacon_meteo() {
   if ( meteoAPRSswitch ) {
      String meteoBeacon = String(METEO_CALLSIGN) + ">" + String(DESTCALL)             + ":!" + String(lat_meteo_APRS) + "/" + String(lon_meteo_APRS) + "_.../" + String(windSpeedAPRS(windLongPeriodSpeed)) + "g" +  String(windSpeedAPRS(gust)) + "t" + String(getTempAPRS()) + "r...p...P..." + "h" + String(getHumAPRS()) + "b" + String(getPressureAPRS())+"." + String(meteo_info);
      if (aprsSwitch && wifiStatus) aprsis_send(meteoBeacon);  // se iGate acceso e connesso manda in APRS-IS
-            meteoBeacon = String(METEO_CALLSIGN) + ">" + String(DESTCALL) + ",WIDE1-1" + ":!" + String(lat_meteo_APRS) + "/" + String(lon_meteo_APRS) + "_.../" + String(windSpeedAPRS(windLongPeriodSpeed)) + "g" +  String(windSpeedAPRS(gust)) + "t" + String(getTempAPRS()) + "r...p...P..." + "h" + String(getHumAPRS()) + "b" + String(getPressureAPRS())+"." + String(meteo_info) + char(10);
+     meteoBeacon = String(METEO_CALLSIGN) + ">" + String(DESTCALL) + ",WIDE1-1" + ":!" + String(lat_meteo_APRS) + "/" + String(lon_meteo_APRS) + "_.../" + String(windSpeedAPRS(windLongPeriodSpeed)) + "g" +  String(windSpeedAPRS(gust)) + "t" + String(getTempAPRS()) + "r...p...P..." + "h" + String(getHumAPRS()) + "b" + String(getPressureAPRS())+"." + String(meteo_info) + char(10);
      if (digiSwitch) lora_send(meteoBeacon);    // se digipeater attivo trasmetti in LoRa
   }
 
@@ -1195,10 +1226,14 @@ void beacon_meteo() {
   }
   gust = 0;
 }
+}
 
 
-
-void beacon_meteo_status() {
+void beacon_meteo_status()
+ {
+  if (token_tx == HIGH)
+  {
+  lastStBeacon=millis();  
   if (cnt_meteo_send == 0 )
     {
       String meteoStatus = String(METEO_CALLSIGN) + ">" + String(DESTCALL) + ":>" + String(METEO_STATUS);
@@ -1206,7 +1241,8 @@ void beacon_meteo_status() {
       
              meteoStatus = String(METEO_CALLSIGN) + ">" + String(DESTCALL) + ",WIDE1-1" + ":>" + String(METEO_STATUS) + char(10);
       if (meteoAPRSswitch && digiSwitch) lora_send(meteoStatus);  // 
-    }  
+    } 
+  } 
 }
 
 
