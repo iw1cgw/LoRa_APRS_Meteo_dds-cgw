@@ -260,7 +260,8 @@ char lon_igate_APRS[11];
 char frequencyC[7]="433775";
 
 char WiFi_ssiD[21]="";
-char WiFi_pwd[21]= "";
+//char WiFi_pwd[21]= "";
+char WiFi_pwd[50]= "";
 
 char altitude[5]="";
 
@@ -554,7 +555,7 @@ void loop()
     if (car == '#')          
       {
         while (Serial.read() != '\n') {};
-        EEPROM_eraser(0,250);
+        EEPROM_eraser(0,255);
         Serial.println(F("EEPROM erased"));
       }
 
@@ -1081,8 +1082,10 @@ void lora_send(String tx_data)
   LoRa.write(0x01);
   //Serial.println("TX: " + tx_data);
   Serial.println("TX: " + tx_data.substring(0,(tx_data.length()-1)));
+  
   token_tx = false;
   millis_token_tx = millis();
+  
   LoRa.write((const uint8_t *)tx_data.c_str(), tx_data.length());
   LoRa.endPacket();
   
@@ -1911,28 +1914,26 @@ char readCarMenu()
                 BottomBanner();
                 break;
               }            
-
             array_eraser(0,9,lat_igate);
             array_eraser(0,10,lon_igate);
-            EEPROM_eraser(230,250);
-
-            tmp=230;
-            while (tmp != 230+sep) // -- salva lat igate
+            EEPROM_eraser(235,255);   // cancella latitudine e longitudine
+            tmp=235;
+            while (tmp != 235+sep) // -- salva lat igate
               {
-                  EEPROM.write( tmp, tmp_buffer[tmp-230] ); // si scrive a partire dalla cella 230 fino alla 239
+                  EEPROM.write( tmp, tmp_buffer[tmp-235] ); // si scrive a partire dalla cella 235 fino alla 244
                   EEPROM.commit();
                   delay(30);
-                  lat_igate[tmp-230]=tmp_buffer[tmp-230];
+                  lat_igate[tmp-235]=tmp_buffer[tmp-235];
                   tmp++;
               } 
            
-            tmp=240;
-            while (tmp != 240+ptr-sep-1) // -- salva lon igate
+            tmp=245;
+            while (tmp != 245+ptr-sep-1) // -- salva lon igate
               {
-                  EEPROM.write( tmp, tmp_buffer[tmp-240+sep+1] ); // si scrive a partire dalla cella 240 fino alla 250
+                  EEPROM.write( tmp, tmp_buffer[tmp-245+sep+1] ); // si scrive a partire dalla cella 245 fino alla 255
                   EEPROM.commit();
                   delay(30);
-                  lon_igate[tmp-240]=tmp_buffer[tmp-240+sep+1];
+                  lon_igate[tmp-245]=tmp_buffer[tmp-245+sep+1];
                   tmp++;
               }           
                              
@@ -1970,11 +1971,11 @@ char readCarMenu()
 
 
           case '7' :
-            Serial.print(F("WiFi password [ max 20 char ]"));
+            Serial.print(F("WiFi password [ max 25 char ]"));
             readCharArray(WiFi_pwd);
-            if (ptr>20 ) ptr=20;
+            if (ptr>50 ) ptr=50;
             EEPROM_writer(190,190+ptr-1,WiFi_pwd);
-            EEPROM_eraser(190+ptr,209);
+            EEPROM_eraser(190+ptr,190);
             Serial.print(F(" = "));
             Serial.println(WiFi_pwd);
             BottomBanner();
@@ -1985,8 +1986,8 @@ char readCarMenu()
             Serial.print(F("APRS server - ex: rotate.aprs2.net"));
             readCharArray(aprs_server);
             if (ptr>20 ) ptr=20;
-            EEPROM_writer(210,210+ptr-1,aprs_server);
-            EEPROM_eraser(210+ptr,229);
+            EEPROM_writer(215,215+ptr-1,aprs_server);
+            EEPROM_eraser(215+ptr,215);
             Serial.print(F(" = "));
             Serial.println(aprs_server);
             APRSISServer = String(aprs_server);
@@ -2292,10 +2293,10 @@ void load_param()
     EEPROM_loader(112,163,igate_info);
 
     EEPROM_loader(170,189,WiFi_ssiD);
-    EEPROM_loader(190,209,WiFi_pwd);
-    EEPROM_loader(210,229,aprs_server);
-    EEPROM_loader(230,239,lat_igate);
-    EEPROM_loader(240,250,lon_igate);
+    EEPROM_loader(215,234,aprs_server);
+    EEPROM_loader(190,214,WiFi_pwd);
+    EEPROM_loader(235,244,lat_igate);
+    EEPROM_loader(245,255,lon_igate);
     verifica_parametri();
   }
 
@@ -2321,13 +2322,17 @@ void initial_reset()
     
     char buff3[24]=".. WXmeteo LoRa tech .."; // buff3 = 23 char [ 0--> 22 ]
     EEPROM_writer(60,   60+22,buff3);
-    EEPROM_writer(112, 112+22,buff3);
+
+    char buff4[24]=".. iGate LoRa tech .."; // buff4 = 23 char [ 0--> 22 ]
+    EEPROM_writer(112, 112+22,buff4);
 
     char buff2[6]="12345";                  // buff2 = 5 char [ 0--> 4 ]
-    EEPROM_writer(170,  170+4,buff2);
-    EEPROM_writer(53, 57,buff2);
-    EEPROM_writer(190,  190+4,buff2);
-    EEPROM_writer(210,  210+4,buff2);
+    EEPROM_writer(170, 170+4,buff2);      // WiFi SSiD
+    EEPROM_writer(190,190+4,buff2);       // WiFi password
+    EEPROM_writer(215,215+4,buff2);       // APRS server
+    EEPROM_writer( 53, 53+4,buff2);       // APRS passcode
+    
+    
 
     EEPROM.write(12, 3);
     EEPROM.write(13, 10);   
@@ -2481,12 +2486,17 @@ void array_eraser(byte start , byte stop , char tmp_data[50])
 
 void EEPROM_eraser(byte start,byte stop)
   {
-    while (start <= stop) // -- cancella EEPROM 
+    while (start <= stop && start != 255) // -- cancella EEPROM 
       {
         //Serial.print("eraser indirizzo: ");Serial.println(start);
         EEPROM.write( start, 254 ); 
         start++;
       }
+    if (stop == 255 ) 
+      {
+        EEPROM.write( 255, 254 ); 
+        //Serial.print("eraser indirizzo: ");Serial.println(255);
+      }  
     EEPROM.commit(); 
   }
 
@@ -2690,26 +2700,7 @@ void make_meteo_display()
     display.display();  
   }
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
- /*
+/*
   ---------------------------------------------------------------------------
     EEPROM MAP
   ---------------------------------------------------------------------------
@@ -2718,7 +2709,6 @@ void make_meteo_display()
   byte of the EEPROM can only hold a
   value from 0 to 255.
  
-  
 0 - 5   // Build:230405 | 6
 6 - 11  // call: IZ1GZA | 6
 12 - 12 // meteo_iD: 13 | 1  
@@ -2735,23 +2725,21 @@ void make_meteo_display()
 58 - 58 // Xmode swapp | bool
 59 - 59 // Use_WiFi| bool
 
-
-
 60 - 111 // info meteo: .. WXmeteo Alma Frabosa - 650m .. | 50 caratteri + flag fine testo - carattere cella 111 -
 112 - 163 // info igate: .. WXmeteo Alma Frabosa - 650m .. | 50 caratteri + flag fine testo - carattere cella 163 -
 
 164 - 164 // switch meteo in APRS-IS [meteoAPRSswitch]
 165 - 165 // switch meteo [meteoSwitch]
-166 - 166 // [aprsSwitch]
+166 - 166 / /switch igate [aprsSwitch]
 167 - 167 // switch digipeater [digiSWitch]
 168 - 168 // display on/off
-169 - 169 // drift_pres base 10 | 10 = 0hPa | 20 = +10hPa | 0 = -10hPa
+169 - 169 // pres trim
 
-170 - 189 // WiFi ssiD
-190 - 209 // WiFi password
-210 - 229 // Aprs_server
+170 - 189 // WiFi ssiD [ 20 caratteri ]
+190 - 214 // WiFi password [ 25 caratteri ]
+215 - 234 // Aprs_server [ 20 caratteri ]
+235 - 244 // latitude igate | 10 caratteri
+245 - 255 // longitudine igate | 11 caratteri 
 
-230 - 239 // latitude igate | 10 caratteri
-240 - 250 // longitudine igate |11 caratteri 
+*/
 
- */
