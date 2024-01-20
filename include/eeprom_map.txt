@@ -23,8 +23,6 @@
 58 - 58 // Xmode swapp | bool
 59 - 59 // Use_WiFi| bool
 
-
-
 60 - 111 // info meteo: .. WXmeteo Alma Frabosa - 650m .. | 50 caratteri + flag fine testo - carattere cella 111 -
 112 - 163 // info igate: .. WXmeteo Alma Frabosa - 650m .. | 50 caratteri + flag fine testo - carattere cella 163 -
 
@@ -35,11 +33,10 @@
 168 - 168 // display on/off
 169 - 169 // pres trim
 
-170 - 189 // WiFi ssiD
-190 - 209 // WiFi password
-210 - 229 // Aprs_server
-
-230 - 239 // latitude igate | 10 caratteri
-240 - 250 // longitudine igate |11 caratteri 
+170 - 189 // WiFi ssiD [ 20 caratteri ]
+190 - 214 // WiFi password [ 25 caratteri ]
+215 - 234 // Aprs_server [ 20 caratteri ]
+235 - 244 // latitude igate | 10 caratteri
+245 - 255 // longitudine igate | 11 caratteri 
 
  */
