@@ -2,7 +2,7 @@
 
 #define Project "LoRa_APRS_Igate+Meteo"
 char Release[7]= "1.02";
-#define Build "240118"
+#define Build "240121"
 #define DESTCALL "APLGM5"            // NOT MODIFY !!! 
 bool Use_WiFi = true;                // enable Wi-Fi connection and HTTP web server
 #define Hostname "LORAMETEO"         // Hostname, name of computer visible in the network
@@ -13,14 +13,16 @@ bool Use_WiFi = true;                // enable Wi-Fi connection and HTTP web ser
 // --- i comment sulle stringhe senza georeferenziazione --- //
 // per iGate viene indicato il valore dell'ultimo ascolto
 // per meteo viene indicato il banner di GitHub
-#define METEO_STATUS "https://iw1cgw.wordpress.com/"  
+#define DEFAULT_STATUS "https://iw1cgw.wordpress.com/"  
+#define DEFAULT_STATUS_SEND_INTERVAL 10   // [ cgw ] send beacon meteo status after nr. xx beacon meteo
+#define USE_DEFAULT_STATUS true           // send status below in timeout of igate packet (needs wifi, igate on and aprs-is)
+
 
 //#define METEO_STATUS "LoRa Meteo based by OK2DDS project"
-
 //#define igate_info "433.775MHz LoRa iGate/digipeater"
 
-#define USE_METEO_STATUS true           // send status below in timeout of igate packet (needs wifi, igate on and aprs-is)
-#define METEO_STATUS_SEND_INTERVAL 10   // [ cgw ] send beacon meteo status after nr. xx beacon meteo
+
+
 
 #define GRAPH_LIMIT 144                   // how many values to store for graphs (too high can cause errors)
 
@@ -35,7 +37,7 @@ bool Use_WiFi = true;                // enable Wi-Fi connection and HTTP web ser
 
 #define APRS_IS_Port 14580                  // server port, keep default (14580)
 
-#define USE_LASTRX_STATUS true              // display Last RX status on igate
+#define USE_LASTRX_STATUS true             // display Last RX status on igate
 
 // HTTP GET DATA UPLOAD SERVICE SETTINGS (experimental, for development)
 
