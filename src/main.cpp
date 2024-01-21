@@ -23,6 +23,7 @@ void aprsis_send(String aprsis_packet);
 void beacon_igate();
 void beacon_meteo();
 void beacon_meteo_status();
+void beacon_igate_status();
 void beacon_upload();
 
 bool check_wifi();
@@ -62,6 +63,7 @@ const byte PLED1 = 25;
 bool wifiStatus = false;
 static time_t aprsLastReconnect = 0;
 static time_t lastIgBeacon = 0;
+static time_t lastStIgBeacon = 0;   // timer dello status dell'igate / 
 static time_t lastMtBeacon = 0;
 static time_t lastStBeacon = 0;
 static time_t lastUpload = 0;
@@ -462,6 +464,7 @@ void setup() {
   lastMtBeacon = millis() - int(tx_interval * 60000);
   lastIgBeacon = millis() - int(tx_interval * 60000);
   lastStBeacon = millis() - int(tx_interval * 60000);
+  lastStIgBeacon = millis() - int(tx_interval*6 * 60000);
   
   if (oledSwitch == true) display.dim(true);
   else display.dim(false);
@@ -692,6 +695,7 @@ void loop()
             if (GETIndex(header, "/reset-tx")) {
               lastUpload = millis();
               lastIgBeacon = millis();
+              lastStIgBeacon = millis();
               lastMtBeacon = millis();
               lastStBeacon = millis();
               client.println("<br>TX reset done.<br>");
@@ -879,6 +883,8 @@ void loop()
 
   //if (aprsSwitch && check_wifi() && check_aprsis() && lastIgBeacon + (tx_interval * 60000) < millis()) beacon_igate();
   if (lastIgBeacon + (tx_interval * 60000) < millis()) beacon_igate();
+  if (digiSwitch && lastStIgBeacon + (tx_interval*6 * 60000) < millis()) beacon_igate_status();
+  if (aprsis && lastStIgBeacon + (tx_interval*6 * 60000) < millis()) beacon_igate_status();
   if (meteoSwitch && meteoAPRSswitch && lastStBeacon + (tx_interval * 60000) < millis()) beacon_meteo_status();
   if (meteoSwitch && meteoAPRSswitch && lastMtBeacon + (tx_interval * 60000) < millis()) beacon_meteo();
   if (Use_UPLOAD && check_wifi() && lastUpload + (UPLOAD_TIMEOUT * 60000) < millis()) beacon_upload();
@@ -897,17 +903,15 @@ void loop()
     int pos1, pos2;
     String rxPacket = LoRa.readString();
     
-    // --- original rxPacket = rxPacket.substring(3);
-    // --- my modified rxPacket = rxPacket.substring(3,(rxPacket.length()-1));
+
     rxPacket = rxPacket.substring(3);
-    //Serial.println("RX: " + rxPacket);
-      Serial.println("RX: " + rxPacket.substring(0,(rxPacket.length()-1)));
+    Serial.println("RX: " + rxPacket.substring(0,(rxPacket.length()-1)));
 
     if (!(rxPacket.length() < 5 || rxPacket.indexOf('>') < 5 || rxPacket.indexOf(':') < rxPacket.indexOf('>') || rxPacket.substring(rxPacket.indexOf('>') + 1, rxPacket.indexOf(':')) == "") && aprsSwitch && Use_WiFi && aprsSwitch) {
       String igatePacket = rxPacket;
-      if (igatePacket.indexOf("NOGATE") == -1 && igatePacket.indexOf("RFONLY") == -1 && igatePacket.indexOf("TCPIP") == -1 && igatePacket.indexOf("TCPXX") == -1 && igatePacket.indexOf(String(METEO_CALLSIGN)) == -1 && igatePacket.indexOf(String(IGATE_CALLSIGN) + "*") == -1 && rxPacket.substring(0, rxPacket.indexOf('>')) != String(IGATE_CALLSIGN)) {
+    //if (igatePacket.indexOf("NOGATE") == -1 && igatePacket.indexOf("RFONLY") == -1 && igatePacket.indexOf("TCPIP") == -1 && igatePacket.indexOf("TCPXX") == -1 && igatePacket.indexOf(String(METEO_CALLSIGN)) == -1 && igatePacket.indexOf(String(IGATE_CALLSIGN) + "*") == -1 && rxPacket.substring(0, rxPacket.indexOf('>')) != String(IGATE_CALLSIGN)) {
+      if (igatePacket.indexOf("NOGATE") == -1 && igatePacket.indexOf("RFONLY") == -1 && igatePacket.indexOf("TCPIP") == -1 && igatePacket.indexOf("TCPXX") == -1                                                                                                                 && rxPacket.substring(0, rxPacket.indexOf('>')) != String(IGATE_CALLSIGN)) {
         igatePacket = igatePacket.substring(0, igatePacket.indexOf(":")) + ",qAO," + String(IGATE_CALLSIGN) + igatePacket.substring(igatePacket.indexOf(":"));
-        //Serial.println("IGated packet.");
         aprsis_send(igatePacket);
       }
     }
@@ -935,7 +939,8 @@ void loop()
       if (int callIndex = digiPath.indexOf(String(IGATE_CALLSIGN)) > -1 && digiPath.indexOf(String(IGATE_CALLSIGN) + "*") == -1) {
         digiPath = digiPath.substring(0, callIndex - 1) + digiPath.substring(callIndex + String(IGATE_CALLSIGN).length());
       }
-      if (int paradigmIndex = digiPath.indexOf("WIDE1-") > -1 && digiSwitch && digiPath.indexOf(String(IGATE_CALLSIGN) + "*") == -1 && rxPacket.indexOf(String(METEO_CALLSIGN)) == -1 && sourceCall.indexOf(String(IGATE_CALLSIGN)) == -1) {
+      if //(int paradigmIndex = digiPath.indexOf("WIDE1-") > -1 && digiSwitch && digiPath.indexOf(String(IGATE_CALLSIGN) + "*") == -1 && rxPacket.indexOf(String(METEO_CALLSIGN)) == -1 && sourceCall.indexOf(String(IGATE_CALLSIGN)) == -1) {
+         (  int paradigmIndex = digiPath.indexOf("WIDE1-") > -1 && digiSwitch                                                                                                       ) {        
         paradigmIndex = digiPath.indexOf("WIDE1-");
         if (paradigmIndex == 0)
           paradigmIndex = 1;
@@ -949,15 +954,19 @@ void loop()
         if (digiPath.indexOf(",") != 0)
           digiPath = "," + digiPath;
         digiPacket = sourceCall + ">" + destCall + digiPath + ":" + message;
+        delay(300);
         lora_send(digiPacket);
-      } else if (digiSwitch && DIGI_IGNORE_PARADIGM && digiPath.indexOf("*") == -1 && (millis() > lastDigipeat + 600000 || lastDigipeat == 0) && digiPath.indexOf(String(IGATE_CALLSIGN) + "*") == -1 && rxPacket.indexOf(String(METEO_CALLSIGN)) == -1 && sourceCall.indexOf(String(IGATE_CALLSIGN)) == -1) {
+      } //else if (digiSwitch && DIGI_IGNORE_PARADIGM && digiPath.indexOf("*") == -1 && (millis() > lastDigipeat + 600000 || lastDigipeat == 0) && digiPath.indexOf(String(IGATE_CALLSIGN) + "*") == -1 && rxPacket.indexOf(String(METEO_CALLSIGN)) == -1 && sourceCall.indexOf(String(IGATE_CALLSIGN)) == -1) {
+          else if (digiSwitch && DIGI_IGNORE_PARADIGM && digiPath.indexOf("*") == -1 && (millis() > lastDigipeat + 600000 || lastDigipeat == 0)                                                                                                                                                              ) {
+        
         lastDigipeat = millis();
         digiPath = digiPath + "," + String(IGATE_CALLSIGN) + "*";
         if (digiPath.indexOf(",") != 0)
           digiPath = "," + digiPath;
         // do not add SNR and RSSI
         digiPacket = sourceCall + ">" + destCall + digiPath + ":" + message;
-        lora_send(digiPacket);
+        delay(300);
+        (digiPacket);
 	    // do not digipeat without WIDE1-1
       } else if (digiSwitch && DIGI_IGNORE_PARADIGM) {
         Serial.println("Station not repeated.");
@@ -1178,7 +1187,7 @@ void beacon_meteo()
    {
   
   lastMtBeacon = millis();
-  if  (cnt_meteo_send > METEO_STATUS_SEND_INTERVAL ) cnt_meteo_send=0;
+  if  (cnt_meteo_send > DEFAULT_STATUS_SEND_INTERVAL ) cnt_meteo_send=0;
   //beacon_meteo_status();
   cnt_meteo_send++;
 
@@ -1239,14 +1248,31 @@ void beacon_meteo_status()
   lastStBeacon=millis();  
   if (cnt_meteo_send == 0 )
     {
-      String meteoStatus = String(METEO_CALLSIGN) + ">" + String(DESTCALL) + ":>" + String(METEO_STATUS);
+      String meteoStatus = String(METEO_CALLSIGN) + ">" + String(DESTCALL) + ":>" + String(DEFAULT_STATUS);
       if (meteoAPRSswitch && wifiStatus && aprsSwitch ) aprsis_send(meteoStatus); // se wifi ok e igate acceso manda status in APRS-IS
       
-             meteoStatus = String(METEO_CALLSIGN) + ">" + String(DESTCALL) + ",WIDE1-1" + ":>" + String(METEO_STATUS) + char(10);
+             meteoStatus = String(METEO_CALLSIGN) + ">" + String(DESTCALL) + ",WIDE1-1" + ":>" + String(DEFAULT_STATUS) + char(10);
       if (meteoAPRSswitch && digiSwitch) lora_send(meteoStatus);  // 
     } 
   } 
 }
+
+void beacon_igate_status()
+ {
+  if (token_tx == HIGH)
+  {
+  lastStIgBeacon=millis();  
+
+      String IgStatus = String(IGATE_CALLSIGN) + ">" + String(DESTCALL) + ":>" + String(DEFAULT_STATUS);
+      if (meteoAPRSswitch && wifiStatus && aprsSwitch ) aprsis_send(IgStatus); // se wifi ok e igate acceso manda status in APRS-IS
+             IgStatus = String(IGATE_CALLSIGN) + ">" + String(DESTCALL) + ",WIDE1-1" + ":>" + String(DEFAULT_STATUS) + char(10);
+      if (digiSwitch) lora_send(IgStatus);  // 
+  } 
+}
+
+
+
+
 
 
 
@@ -1975,7 +2001,7 @@ char readCarMenu()
             readCharArray(WiFi_pwd);
             if (ptr>50 ) ptr=50;
             EEPROM_writer(190,190+ptr-1,WiFi_pwd);
-            EEPROM_eraser(190+ptr,190);
+            EEPROM_eraser(190+ptr,214);
             Serial.print(F(" = "));
             Serial.println(WiFi_pwd);
             BottomBanner();
@@ -1987,7 +2013,7 @@ char readCarMenu()
             readCharArray(aprs_server);
             if (ptr>20 ) ptr=20;
             EEPROM_writer(215,215+ptr-1,aprs_server);
-            EEPROM_eraser(215+ptr,215);
+            EEPROM_eraser(215+ptr,234);
             Serial.print(F(" = "));
             Serial.println(aprs_server);
             APRSISServer = String(aprs_server);
@@ -2188,7 +2214,7 @@ void status_display()
     else Serial.println(F("disabled"));
     
     righello();
-    Serial.print(F("digipeater: "));
+    Serial.print(F("digipeater (LoRa radio): "));
     if (digiSwitch ) Serial.println(F("enabled"));
     else Serial.println(F("disabled"));
 
@@ -2742,4 +2768,3 @@ void make_meteo_display()
 245 - 255 // longitudine igate | 11 caratteri 
 
 */
-
