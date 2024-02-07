@@ -26,8 +26,8 @@
 60 - 111 // info meteo: .. WXmeteo Alma Frabosa - 650m .. | 50 caratteri + flag fine testo - carattere cella 111 -
 112 - 163 // info igate: .. WXmeteo Alma Frabosa - 650m .. | 50 caratteri + flag fine testo - carattere cella 163 -
 
-164 - 164 // switch meteo in APRS-IS [meteoAPRSswitch]
-165 - 165 // switch meteo [meteoSwitch]
+164 - 164 // meteo_tx_mode | 1 = in APRS-IS [meteoAPRSswitch] | 2 = in LoRa [meteoSwitch] | 0  = disable $$ switch meteo
+165 - 165 // igate backup in digi [ backupigateSwitch ] 
 166 - 166 / /switch igate [aprsSwitch]
 167 - 167 // switch digipeater [digiSWitch]
 168 - 168 // display on/off

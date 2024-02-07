@@ -2,7 +2,7 @@
 
 #define Project "LoRa_APRS_Igate+Meteo"
 char Release[7]= "1.02";
-#define Build "240121"
+#define Build "240206"
 #define DESTCALL "APLGM5"            // NOT MODIFY !!! 
 bool Use_WiFi = true;                // enable Wi-Fi connection and HTTP web server
 #define Hostname "LORAMETEO"         // Hostname, name of computer visible in the network
@@ -63,12 +63,13 @@ bool Use_WiFi = true;                // enable Wi-Fi connection and HTTP web ser
 #define LoRa_CodingRate4 5
 
 
-#define Experimental false
+/*
+/#define Experimental false
 //-------------------------------------------// parametri sperimentali veloci - https://meshtastic.org/docs/overview/radio-settings
 #define LoRa_XSpreadingFactor 9             // Medium Fast / - 143 dB budget - new 
 #define LoRa_XSignalBandwidth 250000
 #define LoRa_XCodingRate4 4
-
+*/
 
 
 // DEBUG SETTINGS
