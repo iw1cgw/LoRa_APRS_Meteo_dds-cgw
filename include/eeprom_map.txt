@@ -20,7 +20,7 @@
 47 - 51 // drift termometro | 5 caratteri
 52 - 52 // scelta termometro [ solo per BMP280+AHT20: 0= temp BMP280 | 1= temp AHT20
 53 - 57 // aprs passcode
-58 - 58 // Xmode swapp | bool
+58 - 58 // *** VERIFY VERSION *** | ex: value 102 if for Release "1.02" [ int(atof(Release)*100) ]
 59 - 59 // Use_WiFi| bool
 
 60 - 111 // info meteo: .. WXmeteo Alma Frabosa - 650m .. | 50 caratteri + flag fine testo - carattere cella 111 -
@@ -38,5 +38,4 @@
 215 - 234 // Aprs_server [ 20 caratteri ]
 235 - 244 // latitude igate | 10 caratteri
 245 - 255 // longitudine igate | 11 caratteri 
-
  */

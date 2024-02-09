@@ -1,31 +1,28 @@
 // GENERAL SETTINGS
 
 #define Project "LoRa_APRS_Igate+Meteo"
-char Release[7]= "1.02";
-#define Build "240206"
-#define DESTCALL "APLGM5"            // NOT MODIFY !!! 
-bool Use_WiFi = true;                // enable Wi-Fi connection and HTTP web server
+#define Release "1.02"
+char Build[7] = "240209";
 #define Hostname "LORAMETEO"         // Hostname, name of computer visible in the network
 
-// METEO SERVICE SETTINGS
+/*
+ - tocall: APLHI?
+   vendor: Giovanni, IW1CGW
+   model: LoRa IGate/Digipeater/Telemetry
+   class: digi
+   contact: iw1cgw@libero.it
 
+ - tocall: APLHM?
+   vendor: Giovanni, IW1CGW
+   model: LoRa Meteostation
+   class: wx
+   contact: iw1cgw@libero.it
 
-// --- i comment sulle stringhe senza georeferenziazione --- //
-// per iGate viene indicato il valore dell'ultimo ascolto
-// per meteo viene indicato il banner di GitHub
-#define DEFAULT_STATUS "https://iw1cgw.wordpress.com/"  
-#define DEFAULT_STATUS_SEND_INTERVAL 10   // [ cgw ] send beacon meteo status after nr. xx beacon meteo
-#define USE_DEFAULT_STATUS true           // send status below in timeout of igate packet (needs wifi, igate on and aprs-is)
-
-
-//#define METEO_STATUS "LoRa Meteo based by OK2DDS project"
-//#define igate_info "433.775MHz LoRa iGate/digipeater"
-
-
-
+*/
+#define DESTCALL_digi    "APLHI0"        
+#define DESTCALL_meteo   "APLHM0" 
 
 #define GRAPH_LIMIT 144                   // how many values to store for graphs (too high can cause errors)
-
 #define USE_ANEMOMETER false              // turn on/off wind meter
 #define HALL_SENSOR_PIN 35                // use only ADC_1 pins
 #define ANEMOMETER_LENGTH 0.25            // how long distance (meters) is done by spinning anemometer from one magnet to the next one
@@ -39,14 +36,6 @@ bool Use_WiFi = true;                // enable Wi-Fi connection and HTTP web ser
 
 #define USE_LASTRX_STATUS true             // display Last RX status on igate
 
-// HTTP GET DATA UPLOAD SERVICE SETTINGS (experimental, for development)
-
-#define Use_UPLOAD false
-#define SERVER_URL "http://meteo.mywebsite.com/update.php?values=" // can be used for working with your SQL database
-#define UPLOAD_TIMEOUT 5
-
-// LORA MODULE SETTINGS (keep default unless experimental setup)
-
 #define SERIAL_BAUD 115200                           // serial baud
 
 #define LoRa_SCK 5
@@ -55,8 +44,6 @@ bool Use_WiFi = true;                // enable Wi-Fi connection and HTTP web ser
 #define LoRa_SS 18
 #define LoRa_RST 14
 #define LoRa_DIO0 26
-
-
 //-------------------------------------------// parametri OESTYLE standard
 #define LoRa_SpreadingFactor 12         // The Spreading Factor varies between 128 = 2^7 (SF7) and 4096 = 2^12 (SF12)
 #define LoRa_SignalBandwidth 125000
@@ -64,7 +51,6 @@ bool Use_WiFi = true;                // enable Wi-Fi connection and HTTP web ser
 
 
 /*
-/#define Experimental false
 //-------------------------------------------// parametri sperimentali veloci - https://meshtastic.org/docs/overview/radio-settings
 #define LoRa_XSpreadingFactor 9             // Medium Fast / - 143 dB budget - new 
 #define LoRa_XSignalBandwidth 250000
