@@ -4,17 +4,11 @@
 #include <Wire.h>
 #include <WiFi.h>
 
-/*
-//----------------------------
+// ------------------------------ FOR OTA UPDATE--
 #include <WiFiClient.h>
-#include <WebServer.h>
-#include <ESPmDNS.h>
-#include <HTTPUpdateServer.h>
-const char* host = "esp32-webupdate";
-WebServer httpServer(8080);
-HTTPUpdateServer httpUpdater;
-//----------------------------
-*/
+#include <Update.h>
+#include <ArduinoJson.h>
+// ------------------------------ FOR OTA UPDATE--
 
 #include <HTTPClient.h>
 #include <Adafruit_Sensor.h>
@@ -31,25 +25,29 @@ HTTPUpdateServer httpUpdater;
 void lora_setup();
 void lora_send(String tx_data);
 void aprsis_connect();
-void upload_data(String upload_data);
 void aprsis_send(String aprsis_packet);
 void beacon_igate();
 void beacon_meteo();
 void beacon_meteo_status();
 void beacon_igate_status();
-void beacon_upload();
+
 
 bool check_wifi();
 bool check_aprsis();
+bool checkForUpdates();
+bool updateFirmware();
+bool token_verify_update;
+String Update_path;
+void OTA_display_ko();
 
 
 unsigned long millis_token_tx;
 bool token_tx;
+
 uint8_t retr;
 
 WiFiServer server(80);
 WiFiClient aprsis;
-HTTPClient upload;
 String APRSISServer;
 int pktIndex;
 int mpktIndex;
@@ -73,7 +71,8 @@ int battPercent = 0;
 unsigned long  millis_led = 0;
 const byte PLED1 = 25;   
 
-bool wifiStatus = false;
+
+
 static time_t aprsLastReconnect = 0;
 static time_t lastIgBeacon = 0;
 static time_t lastStIgBeacon = 0;   // timer dello status dell'igate / 
@@ -137,15 +136,14 @@ float windKMH(float windMS);
 float windLongPeriodSpeed = 0;
 float gust = 0;
 
-uint8_t meteo_tx_mode = 0; // meteo_tx_mode | 1 = in APRS-IS [meteoAPRSswitch] | 2 = in LoRa [meteoSwitch] | 0  = disable
-//bool meteoAPRSswitch = true; // = USE METEO ON APRS-IS
-//bool meteoSwitch = true; // = USE_METEO to RF
+uint8_t meteo_tx_mode = 0;      // meteo_tx_mode | 1 = in APRS-IS [meteoAPRSswitch] | 2 = in LoRa [meteoSwitch] | 0  = disable
 bool APRS_login = false;
-bool igateSwitch = true;  // = USE iGate
-bool digiSwitch = true;  // = USE_DIGIPEATER
+bool igateSwitch = false;       // = USE iGate
+bool digiSwitch = false;        // = USE_DIGIPEATER
 bool backupigateSwitch = false; // backup su fault igate, inserisce digipeatyer
-bool oledSwitch = true;  // = oled acceso
-bool Xmode = false;
+bool oledSwitch = true;         // = oled acceso
+bool Use_WiFi;                  // value loaded from EEPROM
+bool wifiStatus = false;
 
 #define SSD1306_ADDRESS 0x3C
 #define SCREEN_WIDTH 128 // OLED display width, in pixels
@@ -264,7 +262,6 @@ char lon_igate_APRS[11];
 char frequencyC[7]="433775";
 
 char WiFi_ssiD[21]="";
-//char WiFi_pwd[21]= "";
 char WiFi_pwd[50]= "";
 
 char altitude[5]="";
@@ -312,7 +309,7 @@ byte cnt=0;                   // contatore invio stringhe meteo
 
 #define  EEPROM_SIZE  254  // // EEPROM size puo' indirizzare da 0 a 255
 #define bottom   ".. (m)enu - (d)isplay - (s)end meteo - (t)ransmit beacon - (r)ead sensor ..\n"
-
+#define DEFAULT_STATUS "https://iw1cgw.wordpress.com/"  
 
 // -------------------------------------------------------------------------------------------
 // -------------------------------------------------------------------------------------------
@@ -460,28 +457,13 @@ void setup() {
   
   lastMtBeacon = millis() - int(tx_interval * 60000);
   lastIgBeacon = millis() - int(tx_interval * 60000);
-  lastStBeacon = millis() - int(tx_interval * 60000);
-  lastStIgBeacon = millis() - int(tx_interval*6 * 60000);
+  lastStBeacon = millis() - int(tx_interval*8 * 60000);  // lo status del meteo 8 volte il tempo standard della stringa meteo 
+  lastStIgBeacon = millis() - int(tx_interval*6 * 60000);// lo status del igate 6 volte il tempo standard della stringa meteo - 
   
   if (oledSwitch == true) display.dim(true);
   else display.dim(false);
   display.display();
-
-
-/*
-//----------------------------
-  MDNS.begin(host);
-  if (MDNS.begin("esp32")) {
-    Serial.println("mDNS responder started");
-  }
-  
-  httpUpdater.setup(&httpServer);
-  httpServer.begin();
- 
-  MDNS.addService("http", "tcp", 80);
-  Serial.printf("HTTPUpdateServer ready! Open http://%s.local/update in your browser\n", host);
-//----------------------------
-*/
+  token_verify_update=false;
 
 
 }
@@ -489,10 +471,11 @@ void setup() {
 void loop()
 {
 
+ //---------------------------- OTA   
+    if ( check_wifi && !token_verify_update && checkForUpdates() ) updateFirmware();
+ //---------------------------- OTA
 
- //----------------------------
-    // httpServer.handleClient();
- //---------------------------- 
+ 
   
   if ( millis() > millis_token_tx +8000 )
     {
@@ -543,10 +526,25 @@ void loop()
         lastStBeacon = millis() - int(tx_interval * 60000);
       }
 
-    if (car == '0' )
+    if (car == 'u' )
       {
         while (Serial.read() != '\n') {};
-        cnt_meteo_send = 0;
+        if (check_wifi) checkForUpdates();
+        Serial.println(Update_path);
+      }
+
+    if (car == 'x' )
+      {
+        while (Serial.read() != '\n') {};
+        checkForUpdates();
+        updateFirmware();
+      }
+
+
+    if (car == 'n' )
+      {
+        while (Serial.read() != '\n') {};
+        cnt_meteo_send = 253;
       }
 
 
@@ -585,7 +583,7 @@ void loop()
     if (car == '#')          
       {
         while (Serial.read() != '\n') {};
-        EEPROM_eraser(0,255);
+        EEPROM_eraser(0,254);
         Serial.println(F("EEPROM erased"));
       }
 
@@ -611,7 +609,6 @@ void loop()
   if (Use_WiFi && !check_wifi() )
    {
     if ( millis() - WiFi_login_retry > 60000 ) WiFi_setup();   // 60 secondi
-    //WiFi.reconnect();
     }
 
 
@@ -663,13 +660,14 @@ void loop()
               //client.println("{\"general\": {\"version\":\"" + String(Release) + "\", \"destcall\":\"" + String(DESTCALL) + "\", \"system_time\":" + String(millis()) + ", \"voltage\":" + String(voltage) + ", \"battery\":" + String(battPercent) + ", \"wifi_status\":" + (check_wifi() ? "true" : "false") + ", \"wifi_signal_db\":" + (check_wifi() ? String(WiFi.RSSI()) : "0") + ", \"wifi_ssid\":\"" + String(WiFi.SSID()) + "\", \"wifi_hostname\":\"" + String(Hostname) + "\", \"bmp280_status\":" + (getBM_sensor_status() ? "true" : "false") + "}, \"lora\": {\"METEO_CALLSIGN\":\"" + String(METEO_CALLSIGN) + "\", \"meteo_enabled\":" + (meteoSwitch ? "true" : "false") + ", \"igate_callsign\":\"" + String(IGATE_CALLSIGN) + "\", \"aprs_is_enabled\":" + (aprsSwitch ? "true" : "false") + ", \"aprs_is_status\":" + (check_aprsis() ? "true" : "false") + ", \"aprs_server\":\"" + (check_aprsis() ? String(APRSISServer) : "disconnected") + "\", \"hall_sensor\":" + String(anemoACValue) + ", \"last_rx\":\"" + String(lastRXstation) + "\"" + "}, \"meteo\": {\"temperature\":" + valueForJSON(tempToWeb(getTempC())) + ", \"pressure\":" + valueForJSON(pressToWeb(getPressure()))  + ", \"Hum\":" + valueForJSON(HumToWeb(getHum())) + ", \"actual_wind\":" + valueForJSON(windToWeb(windActualSpeed)) + ", \"long_period_wind\":" + valueForJSON(windToWeb(windLongPeriodSpeed)) + ", \"gust\":" + valueForJSON(windToWeb(gust)) + ", \"min_temperature\":" + (getBM_sensor_status() ? String(minTemp) : "0") + ", \"max_temperature\":" + (getBM_sensor_status() ? String(maxTemp) : "0") + ", \"min_pressure\":" + (getBM_sensor_status() ? String(minPress) : "0") + ", \"max_pressure\":" + (getBM_sensor_status() ? String(maxPress) : "0") + ", \"max_wind\":" + String(maxWind) + ", \"max_gust\":" + String(maxGust) + "}}");
               //client.println("{\"general\": {\"version\":\"" + String(Release) + "\", \"destcall\":\"" + String(DESTCALL) + "\", \"system_time\":" + String(millis()) + ", \"voltage\":" + String(voltage) + ", \"battery\":" + String(battPercent) + ", \"wifi_status\":" + (check_wifi() ? "true" : "false") + ", \"wifi_signal_db\":" + (check_wifi() ? String(WiFi.RSSI()) : "0") + ", \"wifi_ssid\":\"" + String(WiFi.SSID()) + "\", \"wifi_hostname\":\"" + String(Hostname) + "\", \"bmp280_status\":" + (getBM_sensor_status() ? "true" : "false") + "}, \"lora\": {\"METEO_CALLSIGN\":\"" + String(METEO_CALLSIGN) + "\", \"digi_enabled\":" + (digiSwitch ? "true" : "false") + "\", \"meteo_enabled\":" + (meteoSwitch ? "true" : "false") + "\", \"aprs_is_enabled\":" + (meteoAPRSswitch ? "true" : "false") + ", \"igate_callsign\":\"" + String(IGATE_CALLSIGN) + "\", \"aprs_is_enabled\":" + (aprsSwitch ? "true" : "false") + ", \"aprs_is_status\":" + (check_aprsis() ? "true" : "false") + ", \"aprs_server\":\"" + (check_aprsis() ? String(APRSISServer) : "disconnected") + "\", \"hall_sensor\":" + String(anemoACValue) + ", \"last_rx\":\"" + String(lastRXstation) + "\"" + "}, \"meteo\": {\"temperature\":" + valueForJSON(tempToWeb(getTempC())) + ", \"pressure\":" + valueForJSON(pressToWeb(getPressure()))  + ", \"Hum\":" + valueForJSON(HumToWeb(getHum())) + ", \"actual_wind\":" + valueForJSON(windToWeb(windActualSpeed)) + ", \"long_period_wind\":" + valueForJSON(windToWeb(windLongPeriodSpeed)) + ", \"gust\":" + valueForJSON(windToWeb(gust)) + ", \"min_temperature\":" + (getBM_sensor_status() ? String(minTemp) : "0") + ", \"max_temperature\":" + (getBM_sensor_status() ? String(maxTemp) : "0") + ", \"min_pressure\":" + (getBM_sensor_status() ? String(minPress) : "0") + ", \"max_pressure\":" + (getBM_sensor_status() ? String(maxPress) : "0") + ", \"max_wind\":" + String(maxWind) + ", \"max_gust\":" + String(maxGust) + "}}");
               //  client.println("{\"general\": {\"version\":\"" + String(Release) + "\", \"destcall\":\"" + String(DESTCALL) + "\", \"system_time\":" + String(millis()) + ", \"voltage\":" + String(voltage) + ", \"battery\":" + String(battPercent) + ", \"wifi_status\":" + (check_wifi() ? "true" : "false") + ", \"wifi_signal_db\":" + (check_wifi() ? String(WiFi.RSSI()) : "0") + ", \"wifi_ssid\":\"" + String(WiFi.SSID()) + "\", \"wifi_hostname\":\"" + String(Hostname) + "\", \"bmp280_status\":" + (getBM_sensor_status() ? "true" : "false") + "}, \"lora\": {\"METEO_CALLSIGN\":\"" + String(METEO_CALLSIGN) + "\", \"digi_enabled\":" + (digiSwitch ? "true" : "false") + "\", \"meteo_enabled\":" + (meteoSwitch ? "true" : "false") + "\", \"send_data_meteo\":" + (meteoAPRSswitch ? "true" : "false") + ", \"igate_callsign\":\"" + String(IGATE_CALLSIGN) + ", \"aprs_is_status\":" + (check_aprsis() ? "true" : "false") + ", \"aprs_server\":\"" + (check_aprsis() ? String(APRSISServer) : "disconnected") + "\", \"hall_sensor\":" + String(anemoACValue) + ", \"last_rx\":\"" + String(lastRXstation) + "\"" + "}, \"meteo\": {\"temperature\":" + valueForJSON(tempToWeb(getTempC())) + ", \"pressure\":" + valueForJSON(pressToWeb(getPressure()))  + ", \"Hum\":" + valueForJSON(HumToWeb(getHum())) + ", \"actual_wind\":" + valueForJSON(windToWeb(windActualSpeed)) + ", \"long_period_wind\":" + valueForJSON(windToWeb(windLongPeriodSpeed)) + ", \"gust\":" + valueForJSON(windToWeb(gust)) + ", \"min_temperature\":" + (getBM_sensor_status() ? String(minTemp) : "0") + ", \"max_temperature\":" + (getBM_sensor_status() ? String(maxTemp) : "0") + ", \"min_pressure\":" + (getBM_sensor_status() ? String(minPress) : "0") + ", \"max_pressure\":" + (getBM_sensor_status() ? String(maxPress) : "0") + ", \"max_wind\":" + String(maxWind) + ", \"max_gust\":" + String(maxGust) + "}}");
-  client.println("{\"general\": {\"version\":\"" + String(Release) + "\", \"destcall\":\"" + String(DESTCALL) + "\", \"system_time\":" + String(millis()) + ", \"voltage\":" + String(voltage) + ", \"battery\":" + String(battPercent) + ", \"wifi_status\":" + (check_wifi() ? "true" : "false") + ", \"wifi_signal_db\":" + (check_wifi() ? String(WiFi.RSSI()) : "0") + ", \"wifi_ssid\":\"" + String(WiFi.SSID()) + "\", \"wifi_hostname\":\"" + String(Hostname) + "\", \"bmp280_status\":" + (getBM_sensor_status() ? "true" : "false") + "}, \"lora\": {\"METEO_CALLSIGN\":\"" + String(METEO_CALLSIGN) + "\", \"digi_enabled\":" + (digiSwitch ? "true" : "false") + "\", \"igate_callsign\":\"" + String(IGATE_CALLSIGN) + ", \"aprs_is_status\":" + (check_aprsis() ? "true" : "false") + ", \"aprs_server\":\"" + (check_aprsis() ? String(APRSISServer) : "disconnected") + "\", \"hall_sensor\":" + String(anemoACValue) + ", \"last_rx\":\"" + String(lastRXstation) + "\"" + "}, \"meteo\": {\"temperature\":" + valueForJSON(tempToWeb(getTempC())) + ", \"pressure\":" + valueForJSON(pressToWeb(getPressure()))  + ", \"Hum\":" + valueForJSON(HumToWeb(getHum())) + ", \"actual_wind\":" + valueForJSON(windToWeb(windActualSpeed)) + ", \"long_period_wind\":" + valueForJSON(windToWeb(windLongPeriodSpeed)) + ", \"gust\":" + valueForJSON(windToWeb(gust)) + ", \"min_temperature\":" + (getBM_sensor_status() ? String(minTemp) : "0") + ", \"max_temperature\":" + (getBM_sensor_status() ? String(maxTemp) : "0") + ", \"min_pressure\":" + (getBM_sensor_status() ? String(minPress) : "0") + ", \"max_pressure\":" + (getBM_sensor_status() ? String(maxPress) : "0") + ", \"max_wind\":" + String(maxWind) + ", \"max_gust\":" + String(maxGust) + "}}");
-
+              //client.println("{\"general\": {\"version\":\"" + String(Release) + "\", \"destcall\":\"" + String(DESTCALL) + "\", \"system_time\":" + String(millis()) + ", \"voltage\":" + String(voltage) + ", \"battery\":" + String(battPercent) + ", \"wifi_status\":" + (check_wifi() ? "true" : "false") + ", \"wifi_signal_db\":" + (check_wifi() ? String(WiFi.RSSI()) : "0") + ", \"wifi_ssid\":\"" + String(WiFi.SSID()) + "\", \"wifi_hostname\":\"" + String(Hostname) + "\", \"bmp280_status\":" + (getBM_sensor_status() ? "true" : "false") + "}, \"lora\": {\"METEO_CALLSIGN\":\"" + String(METEO_CALLSIGN) + "\", \"digi_enabled\":" + (digiSwitch ? "true" : "false") + "\", \"igate_callsign\":\"" + String(IGATE_CALLSIGN) + ", \"aprs_is_status\":" + (check_aprsis() ? "true" : "false") + ", \"aprs_server\":\"" + (check_aprsis() ? String(APRSISServer) : "disconnected") + "\", \"hall_sensor\":" + String(anemoACValue) + ", \"last_rx\":\"" + String(lastRXstation) + "\"" + "}, \"meteo\": {\"temperature\":" + valueForJSON(tempToWeb(getTempC())) + ", \"pressure\":" + valueForJSON(pressToWeb(getPressure()))  + ", \"Hum\":" + valueForJSON(HumToWeb(getHum())) + ", \"actual_wind\":" + valueForJSON(windToWeb(windActualSpeed)) + ", \"long_period_wind\":" + valueForJSON(windToWeb(windLongPeriodSpeed)) + ", \"gust\":" + valueForJSON(windToWeb(gust)) + ", \"min_temperature\":" + (getBM_sensor_status() ? String(minTemp) : "0") + ", \"max_temperature\":" + (getBM_sensor_status() ? String(maxTemp) : "0") + ", \"min_pressure\":" + (getBM_sensor_status() ? String(minPress) : "0") + ", \"max_pressure\":" + (getBM_sensor_status() ? String(maxPress) : "0") + ", \"max_wind\":" + String(maxWind) + ", \"max_gust\":" + String(maxGust) + "}}");
+              client.println("{\"general\": {\"version\":\"" + String(Release) + "\", \"system_time\":" + String(millis()) + ", \"voltage\":" + String(voltage) + ", \"battery\":" + String(battPercent) + ", \"wifi_status\":" + (check_wifi() ? "true" : "false") + ", \"wifi_signal_db\":" + (check_wifi() ? String(WiFi.RSSI()) : "0") + ", \"wifi_ssid\":\"" + String(WiFi.SSID()) + "\", \"wifi_hostname\":\"" + String(Hostname) + "\", \"bmp280_status\":" + (getBM_sensor_status() ? "true" : "false") + "}, \"lora\": {\"METEO_CALLSIGN\":\"" + String(METEO_CALLSIGN) + "\", \"digi_enabled\":" + (digiSwitch ? "true" : "false") + "\", \"igate_callsign\":\"" + String(IGATE_CALLSIGN) + ", \"aprs_is_status\":" + (check_aprsis() ? "true" : "false") + ", \"aprs_server\":\"" + (check_aprsis() ? String(APRSISServer) : "disconnected") + "\", \"hall_sensor\":" + String(anemoACValue) + ", \"last_rx\":\"" + String(lastRXstation) + "\"" + "}, \"meteo\": {\"temperature\":" + valueForJSON(tempToWeb(getTempC())) + ", \"pressure\":" + valueForJSON(pressToWeb(getPressure()))  + ", \"Hum\":" + valueForJSON(HumToWeb(getHum())) + ", \"actual_wind\":" + valueForJSON(windToWeb(windActualSpeed)) + ", \"long_period_wind\":" + valueForJSON(windToWeb(windLongPeriodSpeed)) + ", \"gust\":" + valueForJSON(windToWeb(gust)) + ", \"min_temperature\":" + (getBM_sensor_status() ? String(minTemp) : "0") + ", \"max_temperature\":" + (getBM_sensor_status() ? String(maxTemp) : "0") + ", \"min_pressure\":" + (getBM_sensor_status() ? String(minPress) : "0") + ", \"max_pressure\":" + (getBM_sensor_status() ? String(maxPress) : "0") + ", \"max_wind\":" + String(maxWind) + ", \"max_gust\":" + String(maxGust) + "}}");
 
 
 
             } else {
             client.println(String(webPageStart));
+            
             if (!GETIndex(header, "/watch")) client.println(String(webPageHeader) + "</h1><br>");
             
             if (GETIndex(header, "/switch-meteo")) {
@@ -691,18 +689,7 @@ void loop()
               delay(100);
             }
             
-            /*
-            if (GETIndex(header, "/switch-send_data_meteo")) {
-              meteoAPRSswitch = !meteoAPRSswitch;
-              verifica_parametri();
-              if (meteoAPRSswitch == true ) EEPROM.write(164,1);
-              if (meteoAPRSswitch == false) EEPROM.write(164,0);
-              EEPROM.commit();
-              client.println(webReload);
-              aprsis.stop();
-              delay(100);
-            }
-            */
+
 
             if (GETIndex(header, "/switch-backup_igate")) {
               backupigateSwitch = !backupigateSwitch;
@@ -724,14 +711,21 @@ void loop()
               client.println(webReload);
               delay(100);
             }
-            if (GETIndex(header, "/Xmode")) {
-              //Xmode_swapp();
-              client.println(webReload);
-              delay(100);
-            }
+
+
+            if (GETIndex(header, "/update")) {
+              client.println("<br><a>.. download update ..</a>");
+              checkForUpdates();
+              client.println("<br><a>.. install update ..</a>");
+              delay(1000);
+              client.println("<br><a>.. please, close this tab ..</a>");
+              updateFirmware();
+              }
 
             if (GETIndex(header, "/restart")) {
-              client.println();
+              client.println("<br><a>.. restart in progress ..</a>");
+              delay(1000);
+              client.println("<br><a>.. please, close this tab ..</a>");
               ESP.restart();
             }
 
@@ -773,8 +767,8 @@ void loop()
               client.println("<br>Wind reset done.<br>");
             }
             if (GETIndex(header, "/lora"))
-              // --- original --- // client.println("<br>Version: " + String(VERSION) + "<br><br> Voltage: " + String(voltage) + "V<br>Battery: " + String(battPercent) + "%<br>Wi-Fi: " + (check_wifi() ? String(WiFi.SSID()) + " " + String(WiFi.RSSI()) + " dB<br>IP: " + ipToString(WiFi.localIP()) : String("not connected")) + String("<br>APRS-IS: ") + (aprsis.connected() ? "connected" : "not connected") + "<br>Last RX: " + String(lastRXstation) + "<br>Hall sensor: " + String(anemoACValue) + "<br><br>");
-              client.println("Version: " + String(Release) + " build: " + String(Build) + "<br><br> Voltage: " + String(voltage) + " - Battery: " + String(battPercent) + "%<br>Wi-Fi: " + (check_wifi() ? String(WiFi.SSID()) + " " + String(WiFi.RSSI()) + " dB<br>IP: " + ipToString(WiFi.localIP()) : String("not connected")) + String("<br>APRS-IS: ") + (aprsis.connected() ? "connected" : "not connected") + "<br>Last RX: " + String(lastRXstation) + " SNR=" + String(LoRa.packetSnr()) + " dB RSSI=" + String(LoRa.packetRssi()) + "dBm" + "<br><br>");
+               // -- original // client.println("<br>Version: " + String(VERSION) + "<br><br> Voltage: " + String(voltage) + "V<br>Battery: " + String(battPercent) + "%<br>Wi-Fi: " + (check_wifi() ? String(WiFi.SSID()) + " " + String(WiFi.RSSI()) + " dB<br>IP: " + ipToString(WiFi.localIP()) : String("not connected")) + String("<br>APRS-IS: ") + (aprsis.connected() ? "connected" : "not connected") + "<br>Last RX: " + String(lastRXstation) + "<br>Hall sensor: " + String(anemoACValue) + "<br><br>");
+               client.println("Version: " + String(Release) + " build: " + String(Build) + "<br><br> Voltage: " + String(voltage) + " - Battery: " + String(battPercent) + "%<br>Wi-Fi: " + (check_wifi() ? String(WiFi.SSID()) + " " + String(WiFi.RSSI()) + " dBm<br>IP: " + ipToString(WiFi.localIP()) : String("not connected")) + String("<br>APRS-IS: ") + (aprsis.connected() ? "connected" : "not connected") + "<br>iGate/digi: " + IGATE_CALLSIGN + " - meteo: " + METEO_CALLSIGN +"<br>Last RX: " + String(lastRXstation) + " SNR=" + String(LoRa.packetSnr()) + " dB RSSI=" + String(LoRa.packetRssi()) + " dBm" + "<br><br>");
             if ((GETIndex(header, "/lora") || GETIndex(header, "/min-max")) && meteo_tx_mode >0  && (BM_sensor_status || USE_ANEMOMETER)) {
               client.println("<table><tr><td></td><td><b>Minimum</b></td><td><b>Maximum</b></td></tr>");
               
@@ -797,15 +791,17 @@ void loop()
               // --- original --- // client.println("<br>Reset values<br><a href='/reset-bmp'>BMP values</a> - <a href='/reset-temp'>Temperature</a> - <a href='/reset-press'>Pressure</a> - <a href='/reset-wind'>Wind</a><br>");
               
               if (AHTstatus == true || BMEstatus == true )   client.println("<br>Reset values<br><a href='/reset-temp'>Temperature</a> - <a href='/reset-hum'>Humidity</a> - <a href='/reset-press'>Pressure</a><br>");
-              else client.println("<br>Reset values<br><a href='/reset-temp'>Temperature</a> - <a href='/reset-press'>Pressure</a><br>");
-        
+              else client.println("<br>Reset values: <a href='/reset-temp'>Temperature</a> - <a href='/reset-press'>Pressure</a><br>");
+              
+              
+
               String Tmp;
               if (meteo_tx_mode == 0 ) Tmp = "disabled";
               if (meteo_tx_mode == 1 ) Tmp  = "to RF";
               if (meteo_tx_mode == 2 ) Tmp  = "to ip";
               if (meteo_tx_mode == 3 ) Tmp  = "to RF + ip";
               make_display();
-              client.println("<br><a href='/switch-meteo'>Meteo data send is " + Tmp + "</a>");
+              client.println("<br><br><a href='/switch-meteo'>Meteo send is " + Tmp + "</a>");
                            
               
               client.println("<br><a href='/switch-aprs'>Turn IGate On/Off</a> (" + String(igateSwitch ? "ON" : "OFF") + ")");
@@ -814,7 +810,12 @@ void loop()
 
               //if ( Experimental) client.println("<br><a href='/Xmode'>Turn LoRa speed mode On/Off</a> (" + String(Xmode ? "ON" : "OFF") + ")");
               client.println("<br><a href='/restart'>Restart device</a>");
-              client.println("<br><br><br><a href='/'>View main meteo page</a>");
+              
+              client.println("<br><a href='/update'>Force update device</a>");
+
+
+              //client.println("<br><br><br><a href='/'>View main meteo page</a>");
+              
             }
             if (GETIndex(header, "/graphs")) {
               if (BM_sensor_status || USE_ANEMOMETER)
@@ -914,6 +915,8 @@ void loop()
               client.println(webMeteoOnlineRoutine);
               client.println(webSocketHandleScript);
               }
+           
+            
             if (GETIndex(header, "/watch"))
              {
               // METEO WEBSITE LAYOUT FOR WATCH
@@ -923,10 +926,12 @@ void loop()
                           
               client.println(webWatchValuesScript);
              }
+               
             if (!GETIndex(header, "/watch"))
               client.println(webPageFooter);
-            client.println(webPageEnd);
+              client.println(webPageEnd);
             }
+       
             }
             client.println();
             break;
@@ -948,10 +953,11 @@ void loop()
   //if (aprsSwitch && check_wifi() && check_aprsis() && lastIgBeacon + (tx_interval * 60000) < millis()) beacon_igate();
   if (lastIgBeacon + (tx_interval * 60000) < millis()) beacon_igate();
   if (lastStIgBeacon + (tx_interval*6 * 60000) < millis()) beacon_igate_status();
-  if (meteo_tx_mode >0 && lastStBeacon + (tx_interval * 60000) < millis()) beacon_meteo_status();
-  if (meteo_tx_mode >0 && lastMtBeacon + (tx_interval * 60000) < millis()) beacon_meteo();
-  if (Use_UPLOAD && check_wifi() && lastUpload + (UPLOAD_TIMEOUT * 60000) < millis()) beacon_upload();
-
+  if (meteo_tx_mode >0)
+    {
+      if (lastMtBeacon + (tx_interval * 60000) < millis()) beacon_meteo();
+      if (lastStBeacon + (tx_interval*8 * 60000) < millis()) beacon_meteo_status();
+    }   
   voltage = float(analogRead(HALL_SENSOR_PIN)) / 4095*2*3.3*1.1;
   battPercent = 100 * (voltage - 3.3) / (4.2 - 3.3);
   if (battPercent > 100) battPercent = 100;
@@ -980,6 +986,9 @@ void loop()
     }
 
     // digipeating
+    // digipeating
+    // digipeating
+
       pos1 = rxPacket.indexOf('>');
       if (pos1 < 3)
         goto bad_packet;
@@ -999,11 +1008,12 @@ void loop()
       if (destCall == "")
         goto bad_packet;
       lastRXstation = sourceCall;
+
       if (int callIndex = digiPath.indexOf(String(IGATE_CALLSIGN)) > -1 && digiPath.indexOf(String(IGATE_CALLSIGN) + "*") == -1) {
         digiPath = digiPath.substring(0, callIndex - 1) + digiPath.substring(callIndex + String(IGATE_CALLSIGN).length());
       }
-      if //(int paradigmIndex = digiPath.indexOf("WIDE1-") > -1 && digiSwitch && digiPath.indexOf(String(IGATE_CALLSIGN) + "*") == -1 && rxPacket.indexOf(String(METEO_CALLSIGN)) == -1 && sourceCall.indexOf(String(IGATE_CALLSIGN)) == -1) {
-         (  int paradigmIndex = digiPath.indexOf("WIDE1-") > -1 && digiSwitch                                                                                                       ) {        
+      if   (int paradigmIndex = digiPath.indexOf("WIDE1-") > -1 && digiSwitch && digiPath.indexOf(String(IGATE_CALLSIGN) + "*") == -1 && rxPacket.indexOf(String(METEO_CALLSIGN)) == -1 && sourceCall.indexOf(String(IGATE_CALLSIGN)) == -1) {
+      //if (int paradigmIndex = digiPath.indexOf("WIDE1-") > -1 && digiSwitch                                                                                                                                                              ) {        
         paradigmIndex = digiPath.indexOf("WIDE1-");
         if (paradigmIndex == 0)
           paradigmIndex = 1;
@@ -1019,8 +1029,8 @@ void loop()
         digiPacket = sourceCall + ">" + destCall + digiPath + ":" + message;
         delay(300);
         lora_send(digiPacket);
-      } //else if (digiSwitch && DIGI_IGNORE_PARADIGM && digiPath.indexOf("*") == -1 && (millis() > lastDigipeat + 600000 || lastDigipeat == 0) && digiPath.indexOf(String(IGATE_CALLSIGN) + "*") == -1 && rxPacket.indexOf(String(METEO_CALLSIGN)) == -1 && sourceCall.indexOf(String(IGATE_CALLSIGN)) == -1) {
-          else if (digiSwitch && DIGI_IGNORE_PARADIGM && digiPath.indexOf("*") == -1 && (millis() > lastDigipeat + 600000 || lastDigipeat == 0)                                                                                                                                                              ) {
+      }   else if (digiSwitch && DIGI_IGNORE_PARADIGM && digiPath.indexOf("*") == -1 && (millis() > lastDigipeat + 600000 || lastDigipeat == 0) && digiPath.indexOf(String(IGATE_CALLSIGN) + "*") == -1 && rxPacket.indexOf(String(METEO_CALLSIGN)) == -1 && sourceCall.indexOf(String(IGATE_CALLSIGN)) == -1) {
+        //else if (digiSwitch && DIGI_IGNORE_PARADIGM && digiPath.indexOf("*") == -1 && (millis() > lastDigipeat + 600000 || lastDigipeat == 0)                                                                                                                                                              ) {
         
         lastDigipeat = millis();
         digiPath = digiPath + "," + String(IGATE_CALLSIGN) + "*";
@@ -1037,7 +1047,7 @@ void loop()
       digiOutput = true;
 
       // send status
-      statusMessage = String(IGATE_CALLSIGN) + ">" + String(DESTCALL) + ":>Last RX: " + String(sourceCall) + " SNR=" + String(LoRa.packetSnr()) + "dB RSSI=" + String(LoRa.packetRssi()) + "dBm";
+      statusMessage = String(IGATE_CALLSIGN) + ">" + String(DESTCALL_digi) + ":>Last RX: " + String(sourceCall) + " SNR=" + String(LoRa.packetSnr()) + "dB RSSI=" + String(LoRa.packetRssi()) + "dBm";
       if (igateSwitch && USE_LASTRX_STATUS && originalPath.indexOf("*") == -1)
         aprsis_send(statusMessage);
 
@@ -1215,27 +1225,6 @@ void aprsis_connect() {
 
 
 
-
-
-
-
-void upload_data(String upload_data) {
-  Serial.println("HTTP: " + String(upload_data));
-  if (check_wifi()) {
-  String path = String(SERVER_URL) + upload_data;
-  upload.begin(path.c_str());
-  int response = upload.GET();
-  if (response > 0) {
-    Serial.println("HTTP: " + String(response));
-  } else {
-    Serial.println("HTTP ERROR: " + String(response));
-  }
-  }
-}
-
-
-
-
 void aprsis_send(String aprsis_packet)
  {
     if (!check_aprsis() )
@@ -1269,12 +1258,8 @@ void beacon_meteo()
  {
   if (token_tx == HIGH )
    {
-  
-  lastMtBeacon = millis();
-  if  (cnt_meteo_send > DEFAULT_STATUS_SEND_INTERVAL ) cnt_meteo_send=0;
-  //beacon_meteo_status();
-  cnt_meteo_send++;
-
+    
+    lastMtBeacon=millis();  
 
   if (BM_sensor_status) {
     float temp = getTempC();
@@ -1304,14 +1289,15 @@ void beacon_meteo()
     HumValues = addGraphValue(HumValues, "N/A");
   }
   
-  //if (meteoSwitch && BM_sensor_status) {
-  if ( meteo_tx_mode > 0 ) {
-     String meteoBeacon = String(METEO_CALLSIGN) + ">" + String(DESTCALL)             + ":!" + String(lat_meteo_APRS) + "/" + String(lon_meteo_APRS) + "_.../" + String(windSpeedAPRS(windLongPeriodSpeed)) + "g" +  String(windSpeedAPRS(gust)) + "t" + String(getTempAPRS()) + "r...p...P..." + "h" + String(getHumAPRS()) + "b" + String(getPressureAPRS())+"." + String(meteo_info);
-     if (igateSwitch && wifiStatus) aprsis_send(meteoBeacon);  // se iGate acceso e connesso manda in APRS-IS
-     meteoBeacon = String(METEO_CALLSIGN) + ">" + String(DESTCALL) + ",WIDE1-1" + ":!" + String(lat_meteo_APRS) + "/" + String(lon_meteo_APRS) + "_.../" + String(windSpeedAPRS(windLongPeriodSpeed)) + "g" +  String(windSpeedAPRS(gust)) + "t" + String(getTempAPRS()) + "r...p...P..." + "h" + String(getHumAPRS()) + "b" + String(getPressureAPRS())+"." + String(meteo_info) + char(10);
+  if (meteo_tx_mode >0 )
+    {
+     String meteoBeacon = String(METEO_CALLSIGN) + ">" + String(DESTCALL_meteo)              + ":!" + String(lat_meteo_APRS) + "/" + String(lon_meteo_APRS) + "_.../" + String(windSpeedAPRS(windLongPeriodSpeed)) + "g" +  String(windSpeedAPRS(gust)) + "t" + String(getTempAPRS()) + "r...p...P..." + "h" + String(getHumAPRS()) + "b" + String(getPressureAPRS())+"." + String(meteo_info) + "[" + String(cnt_meteo_send) + "]";
+     if (meteo_tx_mode > 1 && igateSwitch && wifiStatus) aprsis_send(meteoBeacon);  // se iGate acceso e connesso manda in APRS-IS
+            meteoBeacon = String(METEO_CALLSIGN) + ">" + String(DESTCALL_meteo) + ",WIDE1-1" + ":!" + String(lat_meteo_APRS) + "/" + String(lon_meteo_APRS) + "_.../" + String(windSpeedAPRS(windLongPeriodSpeed)) + "g" +  String(windSpeedAPRS(gust)) + "t" + String(getTempAPRS()) + "r...p...P..." + "h" + String(getHumAPRS()) + "b" + String(getPressureAPRS())+"." + String(meteo_info) + "[" + String(cnt_meteo_send) + "]" + char(10);
      if (meteo_tx_mode == 1 || meteo_tx_mode == 3 ) lora_send(meteoBeacon);    // se digipeater attivo trasmetti in LoRa
-  }
-
+     if (cnt_meteo_send == 255) cnt_meteo_send = 0;
+     else cnt_meteo_send++;
+    }
 
   if (USE_ANEMOMETER) {
     windValues = addGraphValue(windValues, String(windLongPeriodSpeed));
@@ -1329,26 +1315,24 @@ void beacon_meteo_status()
  {
   if (token_tx == HIGH)
   {
-  lastStBeacon=millis();  
-  if (cnt_meteo_send == 0 )
-    {
-      String meteoStatus = String(METEO_CALLSIGN) + ">" + String(DESTCALL) + ":>" + String(DEFAULT_STATUS);
+      lastStBeacon=millis();
+      String meteoStatus = String(METEO_CALLSIGN) + ">" + String(DESTCALL_meteo) + ":>" + String(DEFAULT_STATUS);
       if (meteo_tx_mode > 1 && wifiStatus && igateSwitch ) aprsis_send(meteoStatus); // se wifi ok e igate acceso e meteo_tx_mode 2 o 3 manda status in APRS-IS
       
-             meteoStatus = String(METEO_CALLSIGN) + ">" + String(DESTCALL) + ",WIDE1-1" + ":>" + String(DEFAULT_STATUS) + char(10);
+             meteoStatus = String(METEO_CALLSIGN) + ">" + String(DESTCALL_meteo) + ",WIDE1-1" + ":>" + String(DEFAULT_STATUS) + char(10);
       if (meteo_tx_mode == 1 || meteo_tx_mode == 3 ) lora_send(meteoStatus);  // 
-    } 
-  } 
+   } 
 }
+
 
 void beacon_igate()
  {
   if (token_tx == HIGH )
     {
     lastIgBeacon = millis();
-    String beacon = String(IGATE_CALLSIGN) + ">" + String(DESTCALL)              + ":!" + String(lat_igate_APRS) + "L" + String(lon_igate_APRS) + "&" + String(igate_info) + String(" | batt:") + String(voltage)+"V";
+    String beacon = String(IGATE_CALLSIGN) + ">" + String(DESTCALL_digi)              + ":!" + String(lat_igate_APRS) + "L" + String(lon_igate_APRS) + "&" + String(igate_info) + String(" | batt:") + String(voltage)+"V";
     if (igateSwitch && check_wifi() && check_aprsis() ) aprsis_send(beacon);
-         beacon = String(IGATE_CALLSIGN) + ">" + String(DESTCALL) + ",WIDE1-1" + ":!" + String(lat_igate_APRS) + "L" + String(lon_igate_APRS) + "&" + String(igate_info) + String(" | batt:") + String(voltage)+"V" + char(10);
+         beacon = String(IGATE_CALLSIGN) + ">" + String(DESTCALL_digi) + ",WIDE1-1" + ":!" + String(lat_igate_APRS) + "L" + String(lon_igate_APRS) + "&" + String(igate_info) + String(" | batt:") + String(voltage)+"V" + char(10);
     if (digiSwitch && token_tx) lora_send(beacon);
     }
  }
@@ -1358,9 +1342,9 @@ void beacon_igate_status()
   if (token_tx == HIGH)
     {
       lastStIgBeacon=millis();  
-      String IgStatus = String(IGATE_CALLSIGN) + ">" + String(DESTCALL) + ":>" + String(DEFAULT_STATUS);
+      String IgStatus = String(IGATE_CALLSIGN) + ">" + String(DESTCALL_digi) + ":>" + String(DEFAULT_STATUS);
       if (igateSwitch && check_wifi() && check_aprsis() ) aprsis_send(IgStatus); // se wifi ok e igate acceso manda status in APRS-IS
-             IgStatus = String(IGATE_CALLSIGN) + ">" + String(DESTCALL) + ",WIDE1-1" + ":>" + String(DEFAULT_STATUS) + char(10);
+             IgStatus = String(IGATE_CALLSIGN) + ">" + String(DESTCALL_digi) + ",WIDE1-1" + ":>" + String(DEFAULT_STATUS) + char(10);
       if (digiSwitch && token_tx ) lora_send(IgStatus);  // 
   } 
 }
@@ -1371,10 +1355,6 @@ void beacon_igate_status()
 
 
 
-void beacon_upload() {
-  lastUpload = millis();
-  if (Use_UPLOAD) upload_data(String(getTempC()) + "," + String(int(getHum())) + "," + String(int(getPressure())) + "," + String(windActualSpeed) + "," + String(windLongPeriodSpeed) + "," + String(voltage) + "," + String(gust));
-}
 
 
 
@@ -2294,7 +2274,7 @@ void status_display()
     */
 
     Serial.print(F("send data meteo: "));
-    if (meteo_tx_mode == 0 ) Serial.println(F("disabled"));
+    if (meteo_tx_mode == 0 ) Serial.println(F("not enabled"));
     if (meteo_tx_mode == 1 ) Serial.println(F("to RF"));
     if (meteo_tx_mode == 2 ) Serial.println(F("to ip"));
     if (meteo_tx_mode == 3 ) Serial.println(F("to RF+ip"));
@@ -2311,7 +2291,7 @@ void status_display()
     Serial.print(F(" , "));
     Serial.println(atof(lon_igate),6);
 
-    Serial.print(F("iGate info: "));
+    Serial.print(F("iGate/digipeater info: "));
     Serial.println(igate_info);
 
     Serial.print(F("iGate: "));
@@ -2326,10 +2306,9 @@ void status_display()
       }
     else Serial.println(F("not enabled"));
         
-    righello();
     Serial.print(F("digipeater: "));
     if (digiSwitch ) Serial.println(F("enabled"));
-    else Serial.println(F("disabled"));
+    else Serial.println(F("not enabled"));
     Serial.print(F("backup iGate to digipeater: "));
     if (backupigateSwitch) Serial.println(F("enabled"));
     else Serial.println(F("not enabled"));
@@ -2371,23 +2350,12 @@ void status_display()
 void load_param()
   {
     /* ---------------------- determina se occorre factory reset 
-      il primi 6 caratteri della EEPROM si attendono il dato della release
-      se non coincide cosa si legge in EEPROM viene avviata la routine di factory reset
+      cerca alla locazione 58 il valore della release
     */ 
-
-    boolean verify = LOW;
-    tmp=0;
-    while ( tmp != 6  )       // leggi dalla cella 0 fino alla cella 6 
-      {
-        car = EEPROM.read(tmp);
-        if (car != Release[tmp] ) verify = true; // verificare da scansione se Realise e Realise nella eeprom sono uguali
-        tmp++;
-      }
-
-    if ( verify == true )
+    if (EEPROM.read(58) != int(atof(Release)*100) ) 
       {
         Serial.println(F("initial reset required  - please wait")); 
-        initial_reset();        // carica valori di default nella EEPROM
+        initial_reset();  // carica valori di default nella EEPROM
       }
  
     EEPROM_loader(6,11,call);
@@ -2402,26 +2370,12 @@ void load_param()
     EEPROM_loader(47,51,drift_thermC);
     ch_term = EEPROM.read( 52 ); 
     EEPROM_loader(53,57,aprs_passcode);
-    
-    //if ( Experimental ) Xmode = EEPROM.read( 58 ); 
-
     Use_WiFi = EEPROM.read( 59 );  
-
     meteo_tx_mode = EEPROM.read( 164 );
     backupigateSwitch = EEPROM.read( 165 );
 
-    if (EEPROM.read( 166 ) > 0 )
-      {
-        igateSwitch = true;   // Use_IGATE
- 
-
-      }
-    else
-      {
-        igateSwitch = false;
-
-
-      }
+    if (EEPROM.read( 166 ) > 0 )igateSwitch = true;   // Use_IGATE
+    else igateSwitch = false;
 
     if (EEPROM.read( 167 ) > 0 ) digiSwitch = true;   // USE_DIGIPEATER
     else digiSwitch  = false;
@@ -2437,7 +2391,6 @@ void load_param()
     EEPROM_loader(190,214,WiFi_pwd);
     EEPROM_loader(235,244,lat_igate);
     EEPROM_loader(245,255,lon_igate);
-    verifica_parametri();
   }
 
 
@@ -2451,9 +2404,11 @@ void initial_reset()
   {
     
     EEPROM_eraser(0,250);
-    Serial.println(F("EEPROM erased - please wait"));
+    Serial.println(F("EEPROM erased - please wait")); // pone a valore '254 tutte le celle
 
-    EEPROM_writer(0, 5,Release);   
+    EEPROM.write(58, int(atof(Release)*100));  // current value of realise
+
+    EEPROM_writer(0, 5,Build);   
     char buff0[10]="N0CALL"; 
     EEPROM_writer(6, 11,buff0);
     char buff1[10]="25"; 
@@ -2472,18 +2427,16 @@ void initial_reset()
     EEPROM_writer(215,215+4,buff2);       // APRS server
     EEPROM_writer( 53, 53+4,buff2);       // APRS passcode
     
-    
-
     EEPROM.write(12, 3);
-    EEPROM.write(13, 10);   
-    EEPROM.write(39, 2);
-    EEPROM.write(40, 10);
-    //EEPROM.write(58, 0);  // Xmode_swapp
-    EEPROM.write(59, 1);  // Use_WiFi
+    EEPROM.write(13, 10);  
+    EEPROM.write(39, 2);  // LoRa power
+    EEPROM.write(40, 10); // tx interval
+    
+    EEPROM.write(59, 0);  // Use_WiFi
     EEPROM.write(164, 0); // meteo_tx_mode
     EEPROM.write(165, 0); // backupigateSwitch
-    EEPROM.write(166, 1); // switch igate
-    EEPROM.write(167, 1); // switch digi
+    EEPROM.write(166, 0); // switch igate
+    EEPROM.write(167, 0); // switch digi
     EEPROM.write(168, 0); // oled on
     EEPROM.write(169, 10);// drift_pres - 10 equivale a un drift di 0hPA
 
@@ -2504,9 +2457,9 @@ void verifica_parametri()
   {
     tmp=0;
     
-    if (meteo_ssiD >15)   meteo_ssiD = 3;
+    if (meteo_ssiD >20)   meteo_ssiD = 3;
     if (meteo_ssiD <1)    meteo_ssiD = 3;
-    if (igate_ssiD >15)   igate_ssiD = 10;
+    if (igate_ssiD >20)   igate_ssiD = 10;
     if (igate_ssiD <1)    igate_ssiD = 10;
     
     if (meteo_tx_mode > 3) meteo_tx_mode = 0;
@@ -2552,11 +2505,8 @@ void verifica_parametri()
     if (LoRa_power >20 )  LoRa_power = 20;
     if (!digiSwitch && !igateSwitch && meteo_tx_mode == 0 ) {
       LoRa.sleep();
-      Serial.println(F(""));
-      Serial.println(F("*** LoRA module set to sleep mode ***"));
+      Serial.println(F("*** LoRa module set to sleep mode ***"));
     }
-
-
   }
 
 
@@ -2719,21 +2669,6 @@ void make_display()
   }
 
 
-/*
-void Xmode_swapp()
-  {
-    Xmode = !Xmode;
-    Serial.print(F("LoRa speed mode:"));
-    lora_setup();
-    if (Xmode ) Serial.println(F("actived"));
-    if (!Xmode ) Serial.println(F("deactivated"));
-    EEPROM.write(58, Xmode);
-    EEPROM.commit(); 
-    make_display();
-  }
-*/
-
-
   void OLED_swapp()
   {
     oledSwitch = !oledSwitch;
@@ -2844,6 +2779,165 @@ void make_meteo_display()
     display.display();  
   }
 
+
+
+
+bool checkForUpdates() {
+  
+  token_verify_update = true;
+  HTTPClient http;
+  http.begin("http://iw1cgw.altervista.org/LoRa_APRS_Igate_Meteo.json");
+  int httpCode = http.GET();
+  if (httpCode == 200)
+    {
+      String input = http.getString();
+      //Serial.println(input);
+      JsonDocument doc;
+      deserializeJson(doc, input);
+      http.end();
+      String last_build = doc[String("build")];
+      String Tmp = "http://iw1cgw.altervista.org/";
+      String file = doc[String("file")];
+      Update_path = Tmp += file;
+
+      /*
+      String project = doc[String("project")];
+      String last_realise = doc[String("realise")];
+      String hardware_model = doc[String("hardware_model")];
+      String checksum = doc[String("checksum")];
+      Serial.print("project: ");Serial.println(project);
+      Serial.print("last_realise: ");Serial.println(last_realise);
+      Serial.print("last_build: ");Serial.println(last_build);
+      Serial.print("hardware_model: ");Serial.println(hardware_model);
+      Serial.print("file: ");Serial.println(file);
+      Serial.print("checksum: ");Serial.println(checksum);
+      */
+
+        display.clearDisplay();
+        display.setTextSize(2);
+        display.setCursor(10,10);
+
+     if ( last_build == Build ) 
+      {
+        Serial.println(F("OTA: this version is updated"));
+
+
+        display.print("version");
+        display.setCursor(10,35);
+        display.print("updated");
+        display.display(); 
+        delay(3000);
+        return false;
+      }
+     else
+      {
+        Serial.println(F("OTA: an update is available"));
+        display.print("update");
+        display.setCursor(10,35);
+        display.print("available");
+        display.display(); 
+        //return updateFirmware(file);
+        return true;
+      }     
+   }
+ else
+  { 
+    http.end();
+    Serial.print(F("OTA: error fetching, error code: "));Serial.println(httpCode);
+    return false;
+  }
+
+}
+
+
+bool updateFirmware()
+  {
+    HTTPClient http;
+    http.begin(Update_path);
+    int httpCode = http.GET();
+    if (httpCode == 200)
+      {
+        Serial.println(F("OTA: install update"));
+        display.clearDisplay();
+        display.setCursor(10,10);
+        display.print("install");
+        display.setCursor(10,35);
+        display.print("update");
+        display.display(); 
+        int contentLength = http.getSize();
+        WiFiClient &client = http.getStream();
+
+        if (Update.begin(contentLength))
+          {
+            size_t written = Update.writeStream(client);
+            http.end();
+            if (written == contentLength)
+              {
+                Serial.println("OTA: written: " + String(written) + " successfully");
+                display.clearDisplay();
+                display.setCursor(10,10);
+                display.print("update");
+                display.setCursor(10,35);
+                display.print("ok");
+                display.display(); 
+                delay(2000);
+              } else
+              {
+                Serial.println("OTA: error: write failed, written only: " + String(written));
+                OTA_display_ko();
+                return false;
+              }
+
+            if (Update.end())
+              {
+                 Serial.println(F("OTA: done!"));
+                 if (Update.isFinished())
+                  {
+                    Serial.println(F("OTA: update successfully completed, now rebooting."));
+                    display.clearDisplay();
+                    display.setCursor(10,10);
+                    display.print("reboot");
+                    display.setCursor(10,35);
+                    display.print("now");
+                    display.display(); 
+                    delay(2000);
+                    ESP.restart();
+                    return true;
+                  } else {
+                            Serial.println(F("OTA: error: update not finished"));
+                            return false;
+                            OTA_display_ko();
+                          }
+                } else  {
+                          Serial.println("OTA: error: " + String(Update.getError()));
+                          OTA_display_ko();
+                          return false;
+                        }
+            } else {
+                      http.end();
+                      Serial.println(F("OTA: error: not enough space to begin"));
+                      OTA_display_ko();
+                      return false;
+                    }
+      } else  {
+                http.end();
+                Serial.println(F("OTA: error: failed to fetch firmware"));
+                OTA_display_ko();
+                return false;
+              }
+}
+
+
+void OTA_display_ko()
+{
+                display.clearDisplay();
+                display.setCursor(10,10);
+                display.print("update");
+                display.setCursor(10,35);
+                display.print("ko");
+                display.display(); 
+}
+
 /*
   ---------------------------------------------------------------------------
     EEPROM MAP
@@ -2866,7 +2960,7 @@ void make_meteo_display()
 47 - 51 // drift termometro | 5 caratteri
 52 - 52 // scelta termometro [ solo per BMP280+AHT20: 0= temp BMP280 | 1= temp AHT20
 53 - 57 // aprs passcode
-58 - 58 // Xmode swapp | bool
+58 - 58 // *** VERIFY VERSION *** | ex: value 102 if for Release "1.02" [ int(atof(Release)*100) ]
 59 - 59 // Use_WiFi| bool
 
 60 - 111 // info meteo: .. WXmeteo Alma Frabosa - 650m .. | 50 caratteri + flag fine testo - carattere cella 111 -
