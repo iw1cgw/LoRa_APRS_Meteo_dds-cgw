@@ -472,7 +472,7 @@ void loop()
 {
 
  //---------------------------- OTA   
-    if ( check_wifi && !token_verify_update && checkForUpdates() ) updateFirmware();
+    if ( check_wifi() && !token_verify_update && checkForUpdates() ) updateFirmware();
  //---------------------------- OTA
 
  
@@ -481,8 +481,8 @@ void loop()
     {
       token_tx = HIGH;  // ogni 8 secondi rigenera un token per abilitare il Tx LoRa
       
-      if ( backupigateSwitch && check_wifi() == false ) digiSwitch = true;
-      if ( backupigateSwitch && check_wifi() == true  ) digiSwitch = EEPROM.read( 167 );
+      if ( backupigateSwitch && !check_wifi() ) digiSwitch = true;
+      if ( backupigateSwitch && check_wifi()  ) digiSwitch = EEPROM.read( 167 );
       retr++;
       if ( retr>1 ) retr =0;
       if ( retr == 0 ) make_display();
@@ -529,7 +529,7 @@ void loop()
     if (car == 'u' )
       {
         while (Serial.read() != '\n') {};
-        if (check_wifi) checkForUpdates();
+        if (check_wifi()) checkForUpdates();
         Serial.println(Update_path);
       }
 
