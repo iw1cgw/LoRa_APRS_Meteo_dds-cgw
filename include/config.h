@@ -5,23 +5,6 @@
 char Build[7] = "240209";
 #define Hostname "LORAMETEO"         // Hostname, name of computer visible in the network
 
-/*
- - tocall: APLHI?
-   vendor: Giovanni, IW1CGW
-   model: LoRa IGate/Digipeater/Telemetry
-   class: digi
-   contact: iw1cgw@libero.it
-
- - tocall: APLHM?
-   vendor: Giovanni, IW1CGW
-   model: LoRa Meteostation
-   class: wx
-   contact: iw1cgw@libero.it
-
-*/
-#define DESTCALL_digi    "APLHI0"        
-#define DESTCALL_meteo   "APLHM0" 
-
 #define GRAPH_LIMIT 144                   // how many values to store for graphs (too high can cause errors)
 #define USE_ANEMOMETER false              // turn on/off wind meter
 #define HALL_SENSOR_PIN 35                // use only ADC_1 pins
