@@ -2,7 +2,7 @@
 
 #define Project "LoRa_APRS_Igate+Meteo"
 #define Release "1.02"
-char Build[7] = "240209";
+char Build[7] = "240211";
 #define Hostname "LORAMETEO"         // Hostname, name of computer visible in the network
 
 #define GRAPH_LIMIT 144                   // how many values to store for graphs (too high can cause errors)
