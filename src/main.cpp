@@ -1076,7 +1076,7 @@ void loop()
       digiOutput = true;
 
       // send status
-      statusMessage = String(IGATE_CALLSIGN) + ">" + String(DESTCALL_digi) + ":>Last RX: " + String(sourceCall) + " SNR=" + String(LoRa.packetSnr()) + "dB RSSI=" + String(LoRa.packetRssi()) + "dBm";
+      statusMessage = String(IGATE_CALLSIGN) + ">APLHI0:>Last RX: " + String(sourceCall) + " SNR=" + String(LoRa.packetSnr()) + "dB RSSI=" + String(LoRa.packetRssi()) + "dBm";
       if (igateSwitch && USE_LASTRX_STATUS && originalPath.indexOf("*") == -1)
         aprsis_send(statusMessage);
 
@@ -1325,9 +1325,9 @@ void beacon_meteo()
   
   if (meteo_tx_mode >0 )
     {
-     String meteoBeacon = String(METEO_CALLSIGN) + ">" + String(DESTCALL_meteo)              + ":!" + String(lat_meteo_APRS) + "/" + String(lon_meteo_APRS) + "_.../" + String(windSpeedAPRS(windLongPeriodSpeed)) + "g" +  String(windSpeedAPRS(gust)) + "t" + String(getTempAPRS()) + "r...p...P..." + "h" + String(getHumAPRS()) + "b" + String(getPressureAPRS()) + " " + String(meteo_info) + " [" + String(cnt_meteo_send) + "]";
+     String meteoBeacon = String(METEO_CALLSIGN) + ">APLHM0:!" + String(lat_meteo_APRS) + "/" + String(lon_meteo_APRS) + "_.../" + String(windSpeedAPRS(windLongPeriodSpeed)) + "g" +  String(windSpeedAPRS(gust)) + "t" + String(getTempAPRS()) + "r...p...P..." + "h" + String(getHumAPRS()) + "b" + String(getPressureAPRS()) + " " + String(meteo_info) + " [" + String(cnt_meteo_send) + "]";
      if ( meteo_tx_mode > 1 && check_wifi() ) aprsis_send(meteoBeacon);  // se iGate acceso e connesso manda in APRS-IS
-            meteoBeacon = String(METEO_CALLSIGN) + ">" + String(DESTCALL_meteo) + ",WIDE1-1" + ":!" + String(lat_meteo_APRS) + "/" + String(lon_meteo_APRS) + "_.../" + String(windSpeedAPRS(windLongPeriodSpeed)) + "g" +  String(windSpeedAPRS(gust)) + "t" + String(getTempAPRS()) + "r...p...P..." + "h" + String(getHumAPRS()) + "b" + String(getPressureAPRS()) + " " + String(meteo_info) + " [" + String(cnt_meteo_send) + "]" + char(10);
+            meteoBeacon = String(METEO_CALLSIGN) + ">APLHM0,WIDE1-1" + ":!" + String(lat_meteo_APRS) + "/" + String(lon_meteo_APRS) + "_.../" + String(windSpeedAPRS(windLongPeriodSpeed)) + "g" +  String(windSpeedAPRS(gust)) + "t" + String(getTempAPRS()) + "r...p...P..." + "h" + String(getHumAPRS()) + "b" + String(getPressureAPRS()) + " " + String(meteo_info) + " [" + String(cnt_meteo_send) + "]" + char(10);
      if (meteo_tx_mode == 1 || meteo_tx_mode == 3 ) lora_send(meteoBeacon);    // se digipeater attivo trasmetti in LoRa
      if (cnt_meteo_send == 255) cnt_meteo_send = 0;
      else cnt_meteo_send++;
@@ -1350,10 +1350,10 @@ void beacon_meteo_status()
   if (token_tx == HIGH)
   {
       lastStBeacon=millis();
-      String meteoStatus = String(METEO_CALLSIGN) + ">" + String(DESTCALL_meteo) + ":>" + String(DEFAULT_STATUS);
+      String meteoStatus = String(METEO_CALLSIGN) + ">APLHM0:>" + String(DEFAULT_STATUS);
       if ( meteo_tx_mode > 1 && check_wifi() ) aprsis_send(meteoStatus); // se wifi ok e igate acceso e meteo_tx_mode 2 o 3 manda status in APRS-IS
       
-             meteoStatus = String(METEO_CALLSIGN) + ">" + String(DESTCALL_meteo) + ",WIDE1-1" + ":>" + String(DEFAULT_STATUS) + char(10);
+             meteoStatus = String(METEO_CALLSIGN) + ">APLHM0,WIDE1-1" + ":>" + String(DEFAULT_STATUS) + char(10);
       if (meteo_tx_mode == 1 || meteo_tx_mode == 3 ) lora_send(meteoStatus);  // 
    } 
 }
@@ -1364,9 +1364,9 @@ void beacon_igate()
   if (token_tx == HIGH )
     {
     lastIgBeacon = millis();
-    String beacon = String(IGATE_CALLSIGN) + ">" + String(DESTCALL_digi)              + ":!" + String(lat_igate_APRS) + "L" + String(lon_igate_APRS) + "&" + String(igate_info) + String(" | batt:") + String(voltage)+"V";
+    String beacon = String(IGATE_CALLSIGN) + ">APLHI0:!" + String(lat_igate_APRS) + "L" + String(lon_igate_APRS) + "&" + String(igate_info) + String(" | batt:") + String(voltage)+"V";
     if (igateSwitch && check_wifi() ) aprsis_send(beacon);
-         beacon = String(IGATE_CALLSIGN) + ">" + String(DESTCALL_digi) + ",WIDE1-1" + ":!" + String(lat_igate_APRS) + "L" + String(lon_igate_APRS) + "&" + String(igate_info) + String(" | batt:") + String(voltage)+"V" + char(10);
+         beacon = String(IGATE_CALLSIGN) + ">APLHI0,WIDE1-1:!" + String(lat_igate_APRS) + "L" + String(lon_igate_APRS) + "&" + String(igate_info) + String(" | batt:") + String(voltage)+"V" + char(10);
     if (digiSwitch && token_tx) lora_send(beacon);
     }
  }
@@ -1376,9 +1376,9 @@ void beacon_igate_status()
   if (token_tx == HIGH)
     {
       lastStIgBeacon=millis();  
-      String IgStatus = String(IGATE_CALLSIGN) + ">" + String(DESTCALL_digi) + ":>" + String(DEFAULT_STATUS);
+      String IgStatus = String(IGATE_CALLSIGN) + ">APLHI0:>" + String(DEFAULT_STATUS);
       if (igateSwitch && check_wifi() ) aprsis_send(IgStatus); // se wifi ok e igate acceso manda status in APRS-IS
-             IgStatus = String(IGATE_CALLSIGN) + ">" + String(DESTCALL_digi) + ",WIDE1-1" + ":>" + String(DEFAULT_STATUS) + char(10);
+             IgStatus = String(IGATE_CALLSIGN) + ">APLHI0,WIDE1-1" + ":>" + String(DEFAULT_STATUS) + char(10);
       if (digiSwitch && token_tx ) lora_send(IgStatus);  // 
   } 
 }
