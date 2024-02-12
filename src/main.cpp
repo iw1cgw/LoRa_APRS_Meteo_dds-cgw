@@ -8,7 +8,6 @@
 #include <WiFiClient.h>
 #include <Update.h>
 #include <ArduinoJson.h>
-
 #include <ESP32_FTPClient.h>
 // ------------------------------ FOR OTA UPDATE--
 
