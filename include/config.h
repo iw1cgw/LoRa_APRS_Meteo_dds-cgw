@@ -2,8 +2,23 @@
 
 #define Project "LoRa_APRS_Igate+Meteo"
 #define Release "1.02"
-char Build[7] = "240211";
-#define Hostname "LORAMETEO"         // Hostname, name of computer visible in the network
+char Build[7] = "240216";
+#define Hostname "LoRa_APRS_Igate+Meteo"         // Hostname, name of computer visible in the network
+
+
+// --- OTA --- 
+
+#define  OTA_web_server "http://------.org/"	// indirizzo Web del server
+#define  OTA_server "------------"				// indirizzo FTP del server
+#define  OTA_user "------------"				// userid del server FTP
+#define  OTA_pass "------------"				// password del server FTP
+#define  OTA_dirName  "/"						// directory che contiene i 3 file seguenti
+#define  OTA_fileName_logbook "OTA_logbook.txt"		// file da creare vuoto nel server - formato testo: codici log di OTA
+#define  OTA_fileName_ver "OTA_fileName_ver.txt"    // file da creare nel server - formato testo: contiene il valore della Build del file di upload
+#define  OTA_fileName_update "update.bin"       // il file binario di upload
+
+
+ 
 
 #define GRAPH_LIMIT 144                   // how many values to store for graphs (too high can cause errors)
 #define USE_ANEMOMETER false              // turn on/off wind meter
