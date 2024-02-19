@@ -13,6 +13,8 @@
 #define web_ChangePrompt_temp "<script>window.location.href = '/new-value/' + prompt('new value thermal drift (max +/- 5) | ex: -0.25', null);</script>"
 #define web_ChangePrompt_pres "<script>window.location.href = '/new-value/' + prompt('new value pressure drift (max +/- 10) | ex: -2', null);</script>"
 
+#define web_ChangePrompt_power "<script>window.location.href = '/new-value/' + prompt('new value power (max 20 dbm) | ex: 2', null);</script>"
+
 //#define webAPRSISChangePrompt "<script>window.location.href = '/new-aprsis/' + prompt('Enter new APRS-IS server address', null);</script>"
 //#define webAPRSISChangeError "<script>alert('Error setting new APRS-IS server'); window.location.href = '/lora';</script>"
 //#define webAPRSISChangeSuccess "<script>alert('Connected to new APRS-IS server'); setTimeout(window.location.href = '/lora', 4500);</script>"
