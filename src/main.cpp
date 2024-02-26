@@ -1186,8 +1186,20 @@ void loop()
   }
 
 
-*/
+  //--- svuota buffer WiFiClient aprsis
 
+  while (igateSwitch && check_aprsis() && aprsis.available()) {
+    String apstring;
+    char aprx = aprsis.read();
+    apstring += aprx;
+    if (aprx == '\n') {
+      //Serial.println(apstring);
+      if (apstring.indexOf("logresp") == -1) {
+        // incoming packet handling
+      }
+      apstring = "";
+    }
+	
 
 } //--- end of loop
 
