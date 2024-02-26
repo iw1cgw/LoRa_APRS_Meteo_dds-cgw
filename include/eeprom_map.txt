@@ -24,11 +24,13 @@
 59 - 59 // Use_WiFi| bool
 
 60 - 111 // info meteo: .. WXmeteo Alma Frabosa - 650m .. | 50 caratteri + flag fine testo - carattere cella 111 -
-112 - 163 // info igate: .. WXmeteo Alma Frabosa - 650m .. | 50 caratteri + flag fine testo - carattere cella 163 -
+112 - 162 // info igate: .. WXmeteo Alma Frabosa - 650m .. | 50 caratteri + flag fine testo - carattere cella 162 -
 
-164 - 164 // meteo_tx_mode | 1 = in APRS-IS [meteoAPRSswitch] | 2 = in LoRa [meteoSwitch] | 0  = disable $$ switch meteo
-165 - 165 // igate backup in digi [ backupigateSwitch ] 
-166 - 166 / /switch igate [aprsSwitch]
+163 - 163 // max_digi_radius | da 1 a 50 Km - default 1 Km
+
+164 - 164 // meteo_tx_mode | 1 = in APRS-IS [meteoAPRSswitch] | 2 = in LoRa [meteoSwitch] | 0  = disable 
+165 - 165 // switch backup for fault igate [backupigateSwitch]
+166 - 166 / /switch igate [igateSwitch]
 167 - 167 // switch digipeater [digiSWitch]
 168 - 168 // display on/off
 169 - 169 // pres trim
@@ -38,4 +40,5 @@
 215 - 234 // Aprs_server [ 20 caratteri ]
 235 - 244 // latitude igate | 10 caratteri
 245 - 255 // longitudine igate | 11 caratteri 
+
  */

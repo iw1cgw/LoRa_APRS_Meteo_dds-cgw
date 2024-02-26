@@ -1,24 +1,18 @@
 // GENERAL SETTINGS
 
-#define Project "LoRa_APRS_Igate+Meteo"
+#define Project "LoRa_APRS_iw1cgw"
 #define Release "1.02"
-char Build[7] = "240218";
-#define Hostname "LoRa_APRS_Igate+Meteo"         // Hostname, name of computer visible in the network
+char Build[7] = "240227";
+#define Hostname "LoRa_APRS_iw1cgw"         // Hostname, name of computer visible in the network
 
-#define OTA_web_server "http://xyz.com/"
-#define OTA_dirName "/"
-#define OTA_fileName_ver "last_ver.txt"       // file testo che contiene unicamente il valore della Build del file di upload
-#define OTA_fileName_update "update.bin"     // il file binario di upload
+
+
+
+
+
+
 
 #define GRAPH_LIMIT 144                   // how many values to store for graphs (too high can cause errors)
-#define USE_ANEMOMETER false              // turn on/off wind meter
-#define HALL_SENSOR_PIN 35                // use only ADC_1 pins
-#define ANEMOMETER_LENGTH 0.25            // how long distance (meters) is done by spinning anemometer from one magnet to the next one
-#define ANEMO_RECALC_LIMIT 2              // calibrate hall sensor
-#define ANEMO_AC_THRESHOLD 1830           // analog value threshold to trigger magnet detection
-#define ANEMO_AC_LOSE      2000           // analog value threshold - magnet is away
-#define ANEMO_RECALC_LIMIT_TIMEOUT 900    // auto update long-period speed after x seconds (should be METEO_BEACON * 60)
-#define ANEMO_RECALC_ACTUAL_SPEED 4       // set actual wind speed to 0 if anemometer is not spinning for x seconds
 
 #define APRS_IS_Port 14580                  // server port, keep default (14580)
 
@@ -48,7 +42,6 @@ char Build[7] = "240218";
 
 // DEBUG SETTINGS
 
-#define ANEMO_DEBUG_MODE false                        // enable debug mode for hall sensor
 #define HTTP_DEBUG_MODE false                          // print incoming HTTP requests
 // EXPERIMENTAL DEBUG ONLY SETTINGS
 #define DIGI_IGNORE_PARADIGM false       // digipeat packets regardless if they contain WIDEn-N
