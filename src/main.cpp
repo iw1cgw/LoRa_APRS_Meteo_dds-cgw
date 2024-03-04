@@ -1092,7 +1092,7 @@ void loop()
 
          digiPacket = sourceCall + ">" + destCall + digiPath + ":" + message;
          delay(300);
-         (digiPacket);
+         lora_send(digiPacket);
 
         } else if (digiSwitch && DIGI_IGNORE_PARADIGM) {
         Serial.println("Station not repeated.");
