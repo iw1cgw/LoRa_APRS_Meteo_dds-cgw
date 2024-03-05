@@ -1,4 +1,4 @@
- /*
+/*
   ---------------------------------------------------------------------------
     EEPROM MAP
   ---------------------------------------------------------------------------
@@ -22,12 +22,11 @@
 53 - 57 // aprs passcode
 58 - 58 // *** VERIFY VERSION *** | ex: value 102 if for Release "1.02" [ int(atof(Release)*100) ]
 59 - 59 // Use_WiFi| bool
-
-60 - 111 // info meteo: .. WXmeteo Alma Frabosa - 650m .. | 50 caratteri + flag fine testo - carattere cella 111 -
-112 - 162 // info igate: .. WXmeteo Alma Frabosa - 650m .. | 50 caratteri + flag fine testo - carattere cella 162 -
-
+60 - 101 // info meteo: .. WXmeteo Alma Frabosa - 650m .. | 40 caratteri + flag fine testo - carattere cella 101 -
+102 - 111 // digi_route | 10 caratteri - ex: iw1cgw-10
+112 - 152 // info igate: .. WXmeteo Alma Frabosa - 650m .. | 40 caratteri + flag fine testo - carattere cella 152 -
+153 - 162 // digi_banned | 10 caratteri - ex: iw1cgw-10
 163 - 163 // max_digi_radius | da 1 a 50 Km - default 1 Km
-
 164 - 164 // meteo_tx_mode | 1 = in APRS-IS [meteoAPRSswitch] | 2 = in LoRa [meteoSwitch] | 0  = disable 
 165 - 165 // switch backup for fault igate [backupigateSwitch]
 166 - 166 / /switch igate [igateSwitch]
@@ -40,5 +39,3 @@
 215 - 234 // Aprs_server [ 20 caratteri ]
 235 - 244 // latitude igate | 10 caratteri
 245 - 255 // longitudine igate | 11 caratteri 
-
- */
