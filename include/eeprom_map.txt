@@ -39,3 +39,7 @@
 215 - 234 // Aprs_server [ 20 caratteri ]
 235 - 244 // latitude igate | 10 caratteri
 245 - 255 // longitudine igate | 11 caratteri 
+
+256 - 265 // Wunder id | 10 caratteri
+266 - 275 // Wunder station key | 10 caratteri
+276 - 276 // Wunder use | 0/1
