@@ -1395,7 +1395,7 @@ void aprsis_connect() {   //--- verifica se connessione a server APRS-IS attiva 
     }
     
     if ( igateSwitch ) aprsis.println("user " + String(IGATE_CALLSIGN) + " pass " + String(aprs_passcode) + " vers IW1CGW_LoRa_iGate 240411E" + " filter t/m/" + String(IGATE_CALLSIGN) +"/20");
-    else if ( meteo_tx_mode == 1 ) aprsis.println("user " + String(METEO_CALLSIGN) + " pass " + String(aprs_passcode) + " vers IW1CGW_LoRa_Wx_240411_E" +" filter t/m/" + String(IGATE_CALLSIGN) +"/20");
+    else if ( meteo_tx_mode == 1 ) aprsis.println("user " + String(METEO_CALLSIGN) + " pass " + String(aprs_passcode) + " vers IW1CGW_LoRa_Wx 240411E" +" filter t/m/" + String(IGATE_CALLSIGN) +"/20");
     
     aprsis_login=false;
     retr=0;
