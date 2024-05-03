@@ -1171,14 +1171,8 @@ else {
       if ( Tmp != "" && sourceCall != Tmp) ignore = 2;      //--- stazione che non ha un digipeating esclusivo 
                                                             //--- in presenza di route per percorso esclusivo
 
-
       Tmp = String(digi_banned);
       if ( Tmp.equals(sourceCall) ) ignore = 3;              //--- stazione con digipeating negato '2
-
-      
-      if (rxPacket.indexOf("IU1DOF") == -1) {
-        }
-       // else ignore = 254;
       
 
       //--- calcolo distanza da sourceCall [ solo ascolto diretto e formati non compressi MIC-E]
