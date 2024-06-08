@@ -8,19 +8,21 @@ Sensors are automatically recognized without setup.
 <br>
 <img src="https://github.com/iw1cgw/LoRa_APRS_Meteo_dds-cgw/blob/main/img/0.jpg">
 <br>
+<img src="https://github.com/iw1cgw/LoRa_APRS_Meteo_dds-cgw/blob/main/img/2.jpg">
+<br>
 It is possible to change the parameters from the menu without the need to recompile again.
 <br>
 <img src="https://github.com/iw1cgw/LoRa_APRS_Meteo_dds-cgw/blob/main/img/1.jpg">
-<br><br>
+<br>
 In the 'bin' directory there is the compiled firmware which can be inoculated using the usual tools or my CGWloader.
 The firmware must be inoculated starting from location 0x0000
-<br><br>
+<br>
 <img src="https://github.com/iw1cgw/LoRa_APRS_Meteo_dds-cgw/blob/main/img/CGWloader.jpg">
-<br><br>
+<br>
 Weather data from sensors is sent via APRS/APRS-IS LoRa. Works as a standard APRS LoRa IGate and/or digipeater, reports coverage.<br>
-<br><br>
+<br>
 <img src="https://github.com/iw1cgw/LoRa_APRS_Meteo_dds-cgw/blob/main/img/aprsmap.jpg">
-<br><br>
+<br>
 Before running your station please check:<br>
 - you have a valid HAM radio license
 - you have edited menu configuration
@@ -34,9 +36,6 @@ The BMP280/BME280 pressure sensor does not require calibration, but the height i
 
 The detected temperature can be compensated +/- 5 Celsius from the menu.
 <br>
-If the meteostation is connected to Wi-Fi, it runs a tiny webserver. Some of the endpoints are even suitable for browser use.<br>Access your station dashboard with entering your station IP to your browser. For accessing from outside your home network, make sure you open ports 80 and 5028 (websocket).<br>
+If the meteostation is connected to Wi-Fi, it runs a tiny webserver. Some of the endpoints are even suitable for browser use.<br>Access your station dashboard with entering your station IP to your browser. For accessing from outside your home network, make sure you open ports 80 and 5028 (websocket).<br>>
 
-<br>
-<img src="https://github.com/iw1cgw/LoRa_APRS_Meteo_dds-cgw/blob/main/img/charts.png">
-<br>
 </code>
