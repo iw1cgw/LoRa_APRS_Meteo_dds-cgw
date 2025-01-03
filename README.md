@@ -10,6 +10,10 @@ Sensors are automatically recognized without setup.
 <br>
 <img src="https://github.com/iw1cgw/LoRa_APRS_Meteo_dds-cgw/blob/main/img/2.jpg">
 <br>
+support INA266 module for Volt/Ampere telemetry solar power station.
+<br>
+<img src="https://github.com/iw1cgw/LoRa_APRS_Meteo_dds-cgw/blob/main/img/2.jpg">
+<br>
 It is possible to change the parameters from the menu without the need to recompile again.
 <br>
 <img src="https://github.com/iw1cgw/LoRa_APRS_Meteo_dds-cgw/blob/main/img/1.jpg">
