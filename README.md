@@ -1,16 +1,13 @@
 # LoRa_APRS_Meteo
 LoRa APRS Meteostation, IGate and Digipeater firmware for TTGO LoRa32 V2.1 
 this is a personal evolution of the original OK2DDS project<br><br>
-Features: measures temperature, pressure (with BMP280 or BME280) and humidity (with BME280 or integrated module AHT20+BMP280).
+Features: measures temperature, pressure (with BMP280 or BME280) and humidity (with BME280 or integrated module AHT20+BMP280) for your meteo station, 
+measures voltage, Ampere ( with INA226 ) for your solar power station of any power system.
 Sensors are automatically recognized without setup.
 <br>
 <img src="https://github.com/iw1cgw/LoRa_APRS_Meteo_dds-cgw/blob/main/img/sensor.jpg">
 <br>
 <img src="https://github.com/iw1cgw/LoRa_APRS_Meteo_dds-cgw/blob/main/img/0.jpg">
-<br>
-<img src="https://github.com/iw1cgw/LoRa_APRS_Meteo_dds-cgw/blob/main/img/2.jpg">
-<br>
-support INA266 module for Volt/Ampere telemetry solar power station.
 <br>
 <img src="https://github.com/iw1cgw/LoRa_APRS_Meteo_dds-cgw/blob/main/img/2.jpg">
 <br>
