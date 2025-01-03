@@ -44,8 +44,12 @@ Access your station dashboard with entering your station IP to your browser.
 <br><br>
 For accessing from outside your home network, make sure you open ports 80 and 5028 (websocket).
 <br><br>
-
-suggestion for a solution with all possible sensors connected, but you can simply connect a single BME280 to already have a mini weather station.
+Suggestion for a solution with all possible sensors connected, but you can simply connect a single BME280 to already have a mini weather station.
 
 <img src="https://github.com/iw1cgw/LoRa_APRS_Meteo_dds-cgw/blob/main/img/full_sensor.jpg">
+
+relative Telemetry data from aprs.fi
+<br><br>
+<img src="https://github.com/iw1cgw/LoRa_APRS_Meteo_dds-cgw/blob/main/img/telemetrix.jpg">
+
 </code>
