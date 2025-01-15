@@ -5,7 +5,7 @@ Features: measures temperature, pressure, humidity with BMP280 or BME280 or AHT2
 measures voltage, Ampere ( with INA226 ) for your solar power station of any power system.
 Sensors are automatically recognized without setup.
 
-<img src="https://github.com/iw1cgw/LoRa_APRS_Meteo_dds-cgw/blob/main/img/sensor.jpg">
+
 <img src="https://github.com/iw1cgw/LoRa_APRS_Meteo_dds-cgw/blob/main/img/0.jpg">
 <img src="https://github.com/iw1cgw/LoRa_APRS_Meteo_dds-cgw/blob/main/img/2.jpg">
 
