@@ -1,7 +1,7 @@
 # LoRa_APRS_Meteo
 LoRa APRS Meteostation, IGate and Digipeater firmware for TTGO LoRa32 V2.1 
 this is a personal evolution of the original OK2DDS project<br><br>
-Features: measures temperature, pressure (with BMP280 or BME280) and humidity (with BME280 or integrated module AHT20+BMP280) for your meteo station, 
+Features: measures temperature, pressure, humidity with BMP280 or BME280 or AHT20 or AHT20+BMP280 or DHT22 in any combination for your meteo station, 
 measures voltage, Ampere ( with INA226 ) for your solar power station of any power system.
 Sensors are automatically recognized without setup.
 
