@@ -51,14 +51,13 @@ For accessing from outside your home network, make sure you open ports 80 and 50
 Some suggestions for solar panel powered solutions, but as per previous example you can simply connect a single BME280 to already have a mini weather station.
 
 <img src="https://github.com/iw1cgw/LoRa_APRS_Meteo_dds-cgw/blob/main/img/TTGO_solar_meteo.jpg">
+step-up regulator is: https://it.aliexpress.com/item/4001203401456.html
 <br><br>
 <img src="https://github.com/iw1cgw/LoRa_APRS_Meteo_dds-cgw/blob/main/img/TTGO_solar_meteo2.jpg">
+step-down regulator is: https://it.aliexpress.com/item/1005005870392716.html
 <br><br>
 <img src="https://github.com/iw1cgw/LoRa_APRS_Meteo_dds-cgw/blob/main/img/TTGO_solar_igate.jpg">
-
-step-up regulator is: https://it.aliexpress.com/item/4001203401456.html
-step-down regulator is: https://it.aliexpress.com/item/1005005870392716.html
-
+<br>
 relative Telemetry data from aprs.fi
 
 <img src="https://github.com/iw1cgw/LoRa_APRS_Meteo_dds-cgw/blob/main/img/telemetrix.jpg">
