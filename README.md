@@ -53,6 +53,8 @@ Some suggestions for solar panel powered solutions, but as per previous example 
 <img src="https://github.com/iw1cgw/LoRa_APRS_Meteo_dds-cgw/blob/main/img/TTGO_solar_meteo.jpg">
 <img src="https://github.com/iw1cgw/LoRa_APRS_Meteo_dds-cgw/blob/main/img/TTGO_solar_igate.jpg">
 
+step-up regulator is: https://it.aliexpress.com/item/4001203401456.html
+
 relative Telemetry data from aprs.fi
 
 <img src="https://github.com/iw1cgw/LoRa_APRS_Meteo_dds-cgw/blob/main/img/telemetrix.jpg">
