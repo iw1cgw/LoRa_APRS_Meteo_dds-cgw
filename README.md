@@ -15,8 +15,8 @@ It is possible to change the parameters from the menu without the need to recomp
 
 <img src="https://github.com/iw1cgw/LoRa_APRS_Meteo_dds-cgw/blob/main/img/1.jpg">
 
-In the 'bin' directory there is the compiled firmware which can be inoculated using the usual tools or my CGWloader.
-The firmware must be inoculated starting from location 0x0000
+In the 'bin' directory there is the compiled firmware which can be inoculated using the usual tools or my CGWloader or from this web page:https://iw1cgw.rf.gd/ .
+If use tools the firmware must be inoculated starting from location 0x0000
 
 <img src="https://github.com/iw1cgw/LoRa_APRS_Meteo_dds-cgw/blob/main/img/CGWloader.jpg">
 
