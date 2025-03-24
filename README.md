@@ -1,39 +1,6 @@
 p><img class="" src="https://github.com/iw1cgw/LoRa_APRS_Meteo_dds-cgw/blob/main/img/20230912.jpg?raw=true" alt="20230912.jpg" width="400" height="533" /><img class="" src="https://iw1cgw.files.wordpress.com/2023/04/images.jpg" alt="images" width="280" height="178" /></p>
 <hr />
-<p><img class="wp-image-6312 alignleft" src="https://iw1cgw.files.wordpress.com/2023/09/umarel.jpg" alt="umarel" width="346" height="346" />Hai sentito parlare dei dispositivi <strong><span style="color: #0000ff;"><a style="color: #0000ff;" href="https://it.aliexpress.com/item/32872078587.html?">TTGO</a></span></strong> che trasmettono in <strong><span style="color: #0000ff;"><a style="color: #0000ff;" href="https://it.wikipedia.org/wiki/LoRa">LoRa</a></span></strong> a 433.775MHz, la cosa ti incuriosisce ma ti sei arreso/arenato perché non sei a tuo agio con i linguaggi di programmazione dove é tutto un <em><strong>sudo</strong></em>re, un dichiarare, assemblare, compilare, seguendo indicazioni  scritte in un buon ermetico sanscrito per iniziati ? <a href="https://iw1cgw.rf.gd/" target="_blank" rel="noopener"><strong><span style="color: #0000ff;">Qui</span></strong></a> puoi facilmente installare un firmware che dovrai solo personalizzare con il tuo call, latitudine, longitudine per essere 'on-line' immediatamente e se aggiungi i <strong><span style="color: #0000ff;"><a style="color: #0000ff;" href="https://it.aliexpress.com/item/1005003975172816.html?">classici sensori di temperatura, umidità e pressione</a></span></strong> realizzi una stazione meteo minimale che puoi consultare dal tuo smartphone o meglio in rete <strong><span style="color: #0000ff;"><a style="color: #0000ff;" href="https://aprs.fi/#!call=a%2FIW1CGW-13&amp;timerange=3600&amp;tail=3600">APRS. </a></span></strong></p>
-<h3 style="text-align: center;"><span style="color: #ff0000;">cosa offre questa soluzione di diverso dal 'solito' ? </span></h3>
-<ul>
-<li>intanto é <strong><span style="color: #0000ff;">100% compliants con le raccomandazioni di aprs.org</span></strong> quindi non potrai utilizzare pittoresche icone rosse o palle blu con la 'L' - fuori norma - [<span style="color: #000000;"> <em><strong><a style="color: #000000;" href="https://iw1cgw.wordpress.com/2024/12/03/fantasy-lora/">leggi qui per approfondimento</a></strong></em></span> ] facendo la figura di quello che non conosce le regole di aprs.org :-)</li>
-<li>funzionalità di iGate e/o digipeater e stazione meteo minimale con sensori di umidità pressione temperatura e opzionalmente voltmetro/amperometro per controllo dei sistemi di alimentazione ( tipicamante pannello solare e batteria di accumulo )</li>
-<li>controllo delle funzionalità del digipeater
-<ul>
-<li>evitando di imbarcare stazioni oltre i 30 Km</li>
-<li>evitando di imbarcare il traffico del vicino di casa</li>
-<li>imbarcando il traffico di una sola stazione - per particolari situazioni/necessità -</li>
-<li>impossibilità, accidentale/inconsapevole, di attivare il digipeater avendo già l'iGate attivo</li>
-<li>ignora richieste WIDE2-2 di altri digipeater, gestisce solo WIDE1-1</li>
-<li>non gestisce stazioni che non siano 'mobili' o 'Wx remote'</li>
-<li>il tutto per evitare di aumentare l'entropia di sistema [ <span style="color: #000000;"><em><strong><a style="color: #000000;" href="https://www.iz2uuf.net/wp/index.php/2016/02/17/aprs-al-collasso/">leggi qui per approfondimento</a></strong></em></span> ]</li>
-</ul>
-</li>
-<li>genera beacon in RF non meno di ogni 10 minuti</li>
-<li>genera beacon in RF che possono essere ripetuti una e una sola volta da altri digipeater</li>
-<li>ignora stazioni che palesemente utilizzano call INESISTENTI, FALSI, DI FANTASIA</li>
-<li>aggiornamento automatico non appena é disponibile una nuova versione</li>
-<li>funzione back-up per perdita di connessione WiFi o non funzionalità internet; il controllo non si limita alla sola presenza della rete WiFi ma anche sulla piena funzionalità e risposta del server APRS-IS cui si é collegati.     Viene attivato il backup anche nei casi in cui il WiFi casalingo è presente ma per qualche disservizio del gestore di rete non c'é connettività; a più d’uno che usa connettività in 3G/4G sono capitate situazioni dove il TTGO è perfettamente connesso in WiFi al router ma proprio il router non ottiene temporaneamente nessuna connettività dalla SIM per il trasporto verso internet.</li>
-<li>possibilità di installare in modalità 'auto-sense' senza necessità di configurazione gli usuali sensori: BMP280 / BME280 / AHT20 / DTH22 / INA226</li>
-<li>modalità deep-sleep-mode per l'utilizzo come stazione meteo alimentata da pannello solare limitando a soli 1,8 milliAmpére i consumi nei periodi di inattività tra un invio dati e l'altro [ vedi a fondo pagina alcune suggestioni per rrealizzare una stazione meteo solar/powered ]</li>
-<li>supporto per l'invio dei dati meteo sulla piattaforma <span style="color: #000000;"><em><strong><a style="color: #000000;" href="https://www.wunderground.com/">Wunder</a></strong></em></span></li>
-<li><span style="font-size: revert;">Nel funzionamento come iGate il sistema offre nel 'fumetto' l'indicazione - </span><span style="color: #ff00ff;">carattere fucsia</span><span style="font-size: revert;"> - dell'ultimo corrispondente ascoltato con i valori di SNR in dB e di livello segnale RF in dBm; il tutto può essere interessante per analisi di aspetti 'propagativi' o prestazionali dei sistemi LoRa tech. Nell'esempio ho ricevuto da circa 35 Km di distanza la stazione IZ1BLA-20 con segnale di -117dbm con (S)ignal(N)oise(R)atio di -11.5 dB.</span></li>
-</ul>
-<p><img class="size-full wp-image-6301 aligncenter" src="https://iw1cgw.files.wordpress.com/2023/09/bla.jpg" alt="bla" width="764" height="455" /></p>
-<hr />
-<p><a href="https://iw1cgw.rf.gd/"><img class="size-full wp-image-7296 aligncenter" src="https://iw1cgw.wordpress.com/wp-content/uploads/2023/09/wf.jpg" alt="" width="729" height="583" /></a></p>
-<hr />
-<p>Al primo avvio troverai sulla rete WiFi un access-point 'N0CALL-10' a cui potrai collegarti con la password '00000000' - 8 volte 'zero e da qui iniziare il setup.  Se non ti sono chiari i parametri da inserire consulta il</p>
-<h1 style="text-align: center;"><span style="color: #ff0000;"><a style="color: #ff0000;" href="https://iw1cgw.wordpress.com/lora-aprs-meteoigate/">&gt;&gt;&gt; manuale &lt;&lt;&lt;</a></span></h1>
-<hr />
-<p style="text-align: left;">This is a personal evolution of the original OK2DDS project</p>
+<p><img class="wp-image-6312 alignleft" src="https://iw1cgw.files.wordpress.com/2023/09/umarel.jpg" alt="umarel" width="346" height="346" />>This is a personal evolution of the original OK2DDS project</p>
 <p>Features: measures temperature, pressure, humidity with BMP280 or BME280 or integrated module AHT20+BMP280 or DHT22 in any combination for your meteo station, measures voltage, Ampere  with INA226 for your solar power station of any power system. Sensors are automatically recognized without setup.  The DHT22 sensor must be connected to GPIO13 with the usual 10KOhm pull-up resistor on 3.3Volt.     Check the wiring diagrams at the bottom of the page<img class="aligncenter" src="https://github.com/iw1cgw/LoRa_APRS_Meteo_dds-cgw/blob/main/img/sensor.jpg?raw=true" alt="sensor.jpg" /></p>
 <p><img class="wp-image-6635 aligncenter" src="https://iw1cgw.wordpress.com/wp-content/uploads/2023/09/1.jpg" alt="1" width="375" height="744" /></p>
 <p>It is possible to change the main parameters from the menu without the need to recompile again.</p>
