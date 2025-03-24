@@ -1,4 +1,4 @@
-p><img class="" src="https://github.com/iw1cgw/LoRa_APRS_Meteo_dds-cgw/blob/main/img/20230912.jpg?raw=true" alt="20230912.jpg" width="400" height="533" /> 
+<img class="" src="https://github.com/iw1cgw/LoRa_APRS_Meteo_dds-cgw/blob/main/img/20230912.jpg?raw=true" alt="20230912.jpg" width="400" height="533" /> 
 This is a personal evolution of the original OK2DDS project</p>
 <p>Features: measures temperature, pressure, humidity with BMP280 or BME280 or integrated module AHT20+BMP280 or DHT22 in any combination for your meteo station, measures voltage, Ampere  with INA226 for your solar power station of any power system. Sensors are automatically recognized without setup.  The DHT22 sensor must be connected to GPIO13 with the usual 10KOhm pull-up resistor on 3.3Volt.     Check the wiring diagrams at the bottom of the page<img class="aligncenter" src="https://github.com/iw1cgw/LoRa_APRS_Meteo_dds-cgw/blob/main/img/sensor.jpg?raw=true" alt="sensor.jpg" /></p>
 <p><img class="wp-image-6635 aligncenter" src="https://iw1cgw.wordpress.com/wp-content/uploads/2023/09/1.jpg" alt="1" width="375" height="744" /></p>
