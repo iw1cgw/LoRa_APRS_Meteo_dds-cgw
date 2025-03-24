@@ -4,8 +4,9 @@ This is a personal evolution of the original OK2DDS project</p>
 <p><img class="wp-image-6635 aligncenter" src="https://iw1cgw.wordpress.com/wp-content/uploads/2023/09/1.jpg" alt="1" width="375" height="744" /></p>
 <p>It is possible to change the main parameters from the menu without the need to recompile again.</p>
 
-<p>The compiled firmware can be inoculated from <strong><span style="color: #ff0000;"><a style="color: #ff0000;" href="https://iw1cgw.rf.gd/">this web page</a></span></strong> or with my CGW_loader. The firmware must be inoculated starting from position 0x0000 and you can get it on <strong><span style="color: #ff0000;"><a style="color: #ff0000;" href="https://github.com/iw1cgw/LoRa_APRS_Meteo_dds-cgw">GitHub</a></span></strong>.</p>
-<p><img class="aligncenter" src="https://github.com/iw1cgw/LoRa_APRS_Meteo_dds-cgw/raw/main/img/CGWloader.jpg" /></p>
+<p>The compiled firmware can be inoculated from <strong><span style="color: #ff0000;"><a style="color: #ff0000;" href="https://iw1cgw.rf.gd/">this web page</a></span></strong> 
+
+
 <p>Weather data from sensors is sent via APRS/APRS-IS LoRa.</p>
 <p><img class="aligncenter" src="https://github.com/iw1cgw/LoRa_APRS_Meteo_dds-cgw/raw/main/img/aprsmap.jpg" /></p>
 <p dir="auto">Before running your station please check:</p>
