@@ -4629,7 +4629,7 @@ void zambrettiRoutine() {
 }
 
   bool check_pwd() {                             //--- check
-    if ( String(dash_pwd) == String(tmp_dash_pwd) ||  String(tmp_dash_pwd) == "scodella" )
+    if ( String(dash_pwd) == String(tmp_dash_pwd) )
     return true;
     else
     return false;   
