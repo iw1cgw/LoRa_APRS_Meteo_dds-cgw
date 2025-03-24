@@ -1,19 +1,6 @@
 # LoRa_APRS_Meteo
 LoRa APRS Meteostation, IGate and Digipeater firmware for LilyGO TTGO<br><br>
-Features: measures temperature, pressure (with BMP280), wind (with hall sensor anemometer - KY-024) and PM (dust) with SPS30, sends meteodata via LoRa APRS, via APRS-IS and/or via own GET requests. Works as a standard LoRa APRS IGate and/or digipeater, reports coverage.<br><br>
-Source code is in src/main.cpp, before running your station please check:<br>
-- you have a valid HAM radio license
-- you have edited <b>config.h</b> and wrote your own configuration
-<br><br>
-If you need help or have any questions or suggestions, please reach to me: david(at)ok2dds.cz
-<h2>Changes v5.0 (last ver. 4.2)</h2>
-- added support for SPS30 particulates sensor<br>
-- redesigned the main meteo dashboard<br>
-- added SPS30 value to API endpoints (added /reset-sps)<br>
-- /graphs and /api/graphs-json changed to /charts and /charts-json<br>
-- /watch removed (replaced with Apple Shortcut and /api/meteo endpoint)<br>
-- added language.h file for partial translation to other languages
-<h2>Setup guide</h2>
+
 1. Download this repository and open it in PlatformIO. It should obtain all dependencies automatically, otherwise they are listed in platformio.ini.<br>
 2. Edit include/config.h.<br>
 3. Upload to your TTGO desk<br><br>
