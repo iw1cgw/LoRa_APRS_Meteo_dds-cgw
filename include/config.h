@@ -4,28 +4,76 @@
 #define Project "LoRa_APRS_iw1cgw"
 
 #define Release "2.01"
-char Build[50] = "250319";
+char Build[50] = "250331";
 #define Hostname "LoRa_APRS_iw1cgw"         // Hostname, name of computer visible in the network
 
+/*
+ - tocall: APLHI?
+   vendor: Giovanni, IW1CGW
+   model: LoRa IGate/Digipeater/Telemetry
+   class: digi
+   contact: iw1cgw@libero.it
+
+ - tocall: APLHM?
+   vendor: Giovanni, IW1CGW
+   model: LoRa Meteostation
+   class: wx
+   contact: iw1cgw@libero.it
+
+*/
+
+
+
+
+
+// ======================= INFINITY 
+/*
+char OTA_server[15] ="ftpupload.net";       // verificare che l'array sia n+1 carattere del valore
+char OTA_user[15] = "if0_35994920";         // verificare che l'array sia n+1 carattere del valore
+char OTA_pass[15] = "HaAQ8pdOzLMtWb";       // verificare che l'array sia n+1 carattere del valore
+*/
+
+// ======================= ALTERVISTA
+char OTA_server[26] ="ftp.iw1cgw.altervista.org";       // verificare che l'array sia n+1 carattere del valore
+char OTA_user[7] = "iw1cgw";         // verificare che l'array sia n+1 carattere del valore
+char OTA_pass[13] = "Qjf9s2U4gXU5";       // verificare che l'array sia n+1 carattere del valore
+
+
+
+
+#define host_test "google.com"
+
+//#define OTA_dirName "/htdocs/"    // INFINITY
+#define OTA_dirName "/"    
+#define OTA_fileName_logbook "data.txt"        // file testo che contiene la progressione dei codici OTA
+#define OTA_fileName_ver "DSCN0001.JPG"       // file testo che contiene unicamente il valore della Build del file di upload
+#define OTA_fileName_update "DSCN0002.JPG"     // il file binario di upload
+
+//#define OTA_web_server "http://iv3sgb.000.pe/"          // INFINITY
+#define OTA_web_server "http://iw1cgw.altervista.org/"    // ALTERVISTA
 
 //#define telem_string_0 "T#000,000,000,000,000,000,00000000"                        // verrà manipolata inserendo i valori puntuali delle sonde in formato BYTE da 0 a 255
 
 #define telem_param_0 ":EQNS.0,1,0,0,1,0,0,0.0196,0,0,0.1,0,0,0.01,-1.27"   // !!! riportare gli esatti valori di parametrizzazione dei sensori !!!!
 #define telem_param_1 ":UNIT.Pkt/10m,Pkt/10m,Volt,Volt,Ampere"
-#define telem_param_2 ":PARM.RxDigi,TxDigi,TTGO,Aux,Aux"       // telemetria se modulo INA226 montato
+#define telem_param_2 ":PARM.RxDigi,TxDigi,Batt,Volt Aux,Ampere Aux"       // telemetria se modulo INA226 montato
 #define telem_param_3 ":BITS.00000000,Telemetry by IW1CGW"
 
 #define telem_meteo_param_0 ":EQNS.0,0.0196,0,0,0.1,0,0,0.01,-1.27"   // !!! riportare gli esatti valori di parametrizzazione dei sensori !!!!
 #define telem_meteo_param_1 ":UNIT.Volt,Volt,Ampere"
-#define telem_meteo_param_2 ":PARM.TTGO,Aux,Aux"       // telemetria se modulo INA226 montato
+#define telem_meteo_param_2 ":PARM.Batt,Volt Aux,Ampere Aux"       // telemetria se modulo INA226 montato
 
 #define uS_TO_S_FACTOR 1000000  /* Conversion factor for micro seconds to seconds */
+//#define TIME_TO_SLEEP  30        /* Time ESP32 will go to sleep (in seconds) */
 
-#define EEPROM_SIZE  355  // // EEPROM size puo' indirizzare da 0 a 355
+#define EEPROM_SIZE  425 // // EEPROM size puo' indirizzare da 0 a 425
 
 #define AUTORESTART_millis 259200   // 72 ore - valore in secondi
+//#define AUTORESTART_AP_millis 1200  // 20 minuti - valore in secondi
 
-#define WiFi_lost_time 30000                // 30 secondi - valore in millisecondi
+//#define WiFi_retry_login_millis     60000  // 1 minuti - valore in millisecondi
+//#define APRS_retry_login_millis     30000   // 30 secondi - valore in millisecondi
+#define WiFi_lost_time 60000                // 60 secondi - valore in millisecondi
 
 
 // la GPIO 34 in modalità 'contampulsi' fuori da ciclo CPU é occupata da anemometro - https://forum.arduino.cc/t/solved-esp32-anemometer-on-reed-switch/1090185/11
@@ -55,6 +103,7 @@ char Build[50] = "250319";
 #define ANEMO_RECALC_ACTUAL_SPEED 4       // set actual wind speed to 0 if anemometer is not spinning for x seconds
 
 #define APRS_IS_Port 14580                  // server port, keep default (14580)
+#define APRS_IS_SERVER "85.188.1.129"
 
 #define USE_LASTRX_STATUS true             // display Last RX status on igate
 
@@ -92,3 +141,4 @@ set 8 for 4:8
 #define HTTP_DEBUG_MODE false              // print incoming HTTP requests
 // EXPERIMENTAL DEBUG ONLY SETTINGS
 #define DIGI_IGNORE_PARADIGM false         // digipeat packets regardless if they contain WIDEn-N
+#define debug_digi false
