@@ -24,11 +24,9 @@ This is a personal evolution of the original OK2DDS project</p>
 <p>Access your station dashboard with entering your station IP to your browser.</p>
 <p>For accessing from outside your home network, make sure you open ports <strong><span style="color: #ff0000;">80</span></strong> and <strong><span style="color: #ff0000;">5028</span></strong> (websocket).</p>
 <p>Some suggestions for solar panel powered solutions, but as per previous example you can simply connect a single BME280 or DTH22 to already have a mini weather station.</p>
-<p><img src="https://github.com/iw1cgw/LoRa_APRS_Meteo_dds-cgw/raw/main/img/TTGO_solar_meteo1.jpg" /></p>
-<p>step-up regulator with battery charger is: <a href="https://it.aliexpress.com/item/4001203401456.html"><img class="alignnone size-medium wp-image-7266" src="https://iw1cgw.wordpress.com/wp-content/uploads/2023/09/step_up_regulator.jpg?w=300" alt="" width="300" height="204" /></a></p>
-<hr />
+<p> </p>
 <p><img src="https://github.com/iw1cgw/LoRa_APRS_Meteo_dds-cgw/raw/main/img/TTGO_solar_meteo2.jpg" /></p>
-<p>step-down regulator is: <a href="https://it.aliexpress.com/item/1005005870392716.html"><img class="alignnone size-medium wp-image-7273" src="https://iw1cgw.wordpress.com/wp-content/uploads/2023/09/step_down.jpg?w=300" alt="" width="300" height="239" /></a></p>
+<p>regulator charge for 18650 battery is: <a href="https://it.aliexpress.com/item/1005007524410968.html"><img class="alignnone size-medium wp-image-7378" src="https://iw1cgw.wordpress.com/wp-content/uploads/2023/09/18650_reg.jpg?w=300" alt="" width="300" height="234" /></a></p>
 <hr />
 <p><img src="https://github.com/iw1cgw/LoRa_APRS_Meteo_dds-cgw/raw/main/img/TTGO_solar_igate.jpg" /></p>
 <p>step-down regulator is:<a href="https://it.aliexpress.com/item/1005005870392716.html"><img class="alignnone size-medium wp-image-7273" src="https://iw1cgw.wordpress.com/wp-content/uploads/2023/09/step_down.jpg?w=300" alt="" width="300" height="239" /></a></p>
