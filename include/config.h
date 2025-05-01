@@ -4,10 +4,11 @@
 #define Project "LoRa_APRS_iw1cgw"
 
 #define Release "2.01"
-char Build[50] = "250331";
+
+
+char Build[50] = "250427";
 #define Hostname "LoRa_APRS_iw1cgw"         // Hostname, name of computer visible in the network
 
-//#define telem_string_0 "T#000,000,000,000,000,000,00000000"                        // verrà manipolata inserendo i valori puntuali delle sonde in formato BYTE da 0 a 255
 
 #define telem_param_0 ":EQNS.0,1,0,0,1,0,0,0.0196,0,0,0.1,0,0,0.01,-1.27"   // !!! riportare gli esatti valori di parametrizzazione dei sensori !!!!
 #define telem_param_1 ":UNIT.Pkt/10m,Pkt/10m,Volt,Volt,Ampere"
@@ -24,11 +25,11 @@ char Build[50] = "250331";
 #define EEPROM_SIZE  425 // // EEPROM size puo' indirizzare da 0 a 425
 
 #define AUTORESTART_millis 259200   // 72 ore - valore in secondi
-//#define AUTORESTART_AP_millis 1200  // 20 minuti - valore in secondi
+#define Timeout_AP_millis 60000    // 2 minuti - valore in millisecondi
 
 //#define WiFi_retry_login_millis     60000  // 1 minuti - valore in millisecondi
-//#define APRS_retry_login_millis     30000   // 30 secondi - valore in millisecondi
-#define WiFi_lost_time 60000                // 60 secondi - valore in millisecondi
+//#define APRS_retry_login_millis     30000  // 30 secondi - valore in millisecondi
+#define WiFi_lost_time 120000                // 120 secondi - valore in millisecondi
 
 
 // la GPIO 34 in modalità 'contampulsi' fuori da ciclo CPU é occupata da anemometro - https://forum.arduino.cc/t/solved-esp32-anemometer-on-reed-switch/1090185/11
@@ -58,7 +59,7 @@ char Build[50] = "250331";
 #define ANEMO_RECALC_ACTUAL_SPEED 4       // set actual wind speed to 0 if anemometer is not spinning for x seconds
 
 #define APRS_IS_Port 14580                  // server port, keep default (14580)
-#define APRS_IS_SERVER "85.188.1.129"
+
 
 #define USE_LASTRX_STATUS true             // display Last RX status on igate
 
