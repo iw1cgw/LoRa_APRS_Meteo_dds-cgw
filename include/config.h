@@ -5,8 +5,7 @@
 
 #define Release "2.01"
 
-
-char Build[50] = "250427";
+char Build[50] = "250502";
 #define Hostname "LoRa_APRS_iw1cgw"         // Hostname, name of computer visible in the network
 
 
@@ -25,7 +24,7 @@ char Build[50] = "250427";
 #define EEPROM_SIZE  425 // // EEPROM size puo' indirizzare da 0 a 425
 
 #define AUTORESTART_millis 259200   // 72 ore - valore in secondi
-#define Timeout_AP_millis 60000    // 2 minuti - valore in millisecondi
+#define Timeout_AP_millis 300000    // 5 minuti - valore in millisecondi
 
 //#define WiFi_retry_login_millis     60000  // 1 minuti - valore in millisecondi
 //#define APRS_retry_login_millis     30000  // 30 secondi - valore in millisecondi
