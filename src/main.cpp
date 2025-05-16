@@ -3848,9 +3848,7 @@ void verifica_parametri()
     if (meteo_ssiD >99)   meteo_ssiD = 3;
     if (meteo_ssiD <1)    meteo_ssiD = 3;
     if (igate_ssiD >100)   igate_ssiD = 10;
-    //if (igate_ssiD <1)    igate_ssiD = 10;
-    
-    //if (meteo_tx_mode > 3) meteo_tx_mode = 3;   // dalla 20230927 non possibile rf+ip
+        
     if (meteo_tx_mode > 2) meteo_tx_mode = 2;
  
     if ( tx_interval != 0 ) {
@@ -3864,7 +3862,6 @@ void verifica_parametri()
     //hum_lect = time_data_period/(tx_interval*60000);
     //Serial.print("hum_lect: ");
     //Serial.println(hum_lect);
-
 
     if ( drift_pres > 10 ) drift_pres = 10;
     if ( drift_pres < -10 ) drift_pres = -10;
@@ -3909,8 +3906,6 @@ void verifica_parametri()
     //if (LoRa_power <2 )   LoRa_power = 2;
     if (LoRa_power >20 )  LoRa_power = 20;
     //if (LoRa_rx_gain >6 )  LoRa_rx_gain = 0;  // = auto
-
-
   }
 
 void APRS_LatLon()
@@ -4223,10 +4218,7 @@ void calc_dist(String rxPacket,int pos2) {
   //IK2XRO-10>APLRG1,IU2SKJ-10*,qAO,IQ4FE-2                  :!L7ScFPp"pa xGLoRa APRS Batt=4.29V
   //IW1QAF-23>APLRW1,WIDE1-1,qAR,IZ1HKE-10                   :!/8%k8PZxo_ xG252/013g021t061r000p002L000h94b09580Experimental LoRa APRS Wx Station
   //IU1FIL-14>APLRT1,WIDE1-1,qAO,IU1LCU-11                   :!/8/gKPW22k@\Q Bat=V (mA)
-  //int pos2 = rxPacket.indexOf(':');
-
-
-
+  
     float myLat_igate;
     float myLon_igate;
     float LatRx; 
@@ -4253,8 +4245,7 @@ void calc_dist(String rxPacket,int pos2) {
   }
 
   else {
-
-        const String& GPSPacket         = rxPacket.substring(rxPacket.indexOf(":!")+3);
+        const String& GPSPacket         = rxPacket.substring(pos2+3);
         const String& encodedLatitude   = GPSPacket.substring(0,4);
         const String& encodedLongtitude = GPSPacket.substring(4,8);
         int Y1 = int(encodedLatitude[0]);
