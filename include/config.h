@@ -5,18 +5,21 @@
 
 #define Release "2.01"
 
-char Build[50] = "250502";
+
+char Build[50] = "250521";
 #define Hostname "LoRa_APRS_iw1cgw"         // Hostname, name of computer visible in the network
 
 
+//#define telem_string_0 "T#000,000,000,000,000,000,00000000"                        // verrà manipolata inserendo i valori puntuali delle sonde in formato BYTE da 0 a 255
+
 #define telem_param_0 ":EQNS.0,1,0,0,1,0,0,0.0196,0,0,0.1,0,0,0.01,-1.27"   // !!! riportare gli esatti valori di parametrizzazione dei sensori !!!!
 #define telem_param_1 ":UNIT.Pkt/10m,Pkt/10m,Volt,Volt,Ampere"
-#define telem_param_2 ":PARM.RxDigi,TxDigi,Batt,Volt Aux,Ampere Aux"       // telemetria se modulo INA226 montato
+#define telem_param_2 ":PARM.RxPkt,TxPkt,Batt,Volt Aux,Ampere Aux"       // telemetria se modulo INA226 montato
 #define telem_param_3 ":BITS.00000000,Telemetry by IW1CGW"
 
 #define telem_meteo_param_0 ":EQNS.0,0.0196,0,0,0.1,0,0,0.01,-1.27"   // !!! riportare gli esatti valori di parametrizzazione dei sensori !!!!
 #define telem_meteo_param_1 ":UNIT.Volt,Volt,Ampere"
-#define telem_meteo_param_2 ":PARM.Batt,Volt Aux,Ampere Aux"       // telemetria se modulo INA226 montato
+#define telem_meteo_param_2 ":PARM.Batt,Volt Aux,Ampere Aux"       
 
 #define uS_TO_S_FACTOR 1000000  /* Conversion factor for micro seconds to seconds */
 //#define TIME_TO_SLEEP  30        /* Time ESP32 will go to sleep (in seconds) */
@@ -96,4 +99,4 @@ set 8 for 4:8
 #define HTTP_DEBUG_MODE false              // print incoming HTTP requests
 // EXPERIMENTAL DEBUG ONLY SETTINGS
 #define DIGI_IGNORE_PARADIGM false         // digipeat packets regardless if they contain WIDEn-N
-#define debug_digi false
+#define debug_digi true
