@@ -26,7 +26,7 @@ This is a personal evolution of the original OK2DDS project</p>
 <p>Some suggestions for solar panel powered solutions, but as per previous example you can simply connect a single BME280 or DTH22 to already have a mini weather station.</p>
 <p> </p>
 <p><img src="https://github.com/iw1cgw/LoRa_APRS_Meteo_dds-cgw/raw/main/img/TTGO_solar_meteo2.jpg" /></p>
-<p>regulator charge for 18650 battery is: <a href="https://it.aliexpress.com/item/1005007524410968.html"><img class="alignnone size-medium wp-image-7378" src="https://iw1cgw.wordpress.com/wp-content/uploads/2023/09/18650_reg.jpg?w=300" alt="" width="300" height="234" /></a></p>
+<p>step-down regulator is:<a href="https://it.aliexpress.com/item/1005005870392716.html"><img class="alignnone size-medium wp-image-7273" src="https://iw1cgw.wordpress.com/wp-content/uploads/2023/09/step_down.jpg?w=300" alt="" width="300" height="239" /></a></p>
 <hr />
 <p><img src="https://github.com/iw1cgw/LoRa_APRS_Meteo_dds-cgw/raw/main/img/TTGO_solar_igate.jpg" /></p>
 <p>step-down regulator is:<a href="https://it.aliexpress.com/item/1005005870392716.html"><img class="alignnone size-medium wp-image-7273" src="https://iw1cgw.wordpress.com/wp-content/uploads/2023/09/step_down.jpg?w=300" alt="" width="300" height="239" /></a></p>
